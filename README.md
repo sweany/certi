@@ -11,6 +11,9 @@ Lofty goals for functionality:
 * sniffing mode
 * file mode
 * directory mode
+* logging to syslog
+* storing certificate details in sqlite db
+* reporting on stored certs
 
 
 ## Example
