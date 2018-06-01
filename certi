@@ -1,25 +1,32 @@
 #!/usr/bin/env python3
 
 import argparse
+from datetime import datetime
 import json
 import os
 import sys
 import ssl
 import OpenSSL.crypto
-import sqlite3
+import sqlite3 as lite
 
 # https://pyopenssl.org/en/stable/api/crypto.html
 #print(ssl.OPENSSL_VERSION)
 CA_FILE = '/etc/ssl/certs/ca-certificates.crt'
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-dbfile = dir_path + 'certi.db'
+dbfile = dir_path + '/certi.db'
 
 
-def getcert(addr):
-    cert = ssl.get_server_certificate(addr)
-    print(cert)
-    
+def getcert(args):
+    try:
+        cert = ssl.get_server_certificate((args.target, args.port))
+    except ConnectionRefusedError as e:
+        print("Unable to get certificate: {}".format(e))
+        sys.exit(1)
+
+    #print(cert)
+    #print("{}  {}:{}".format(str(datetime.now()), args.target, args.port))
+
     x = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
     print(x.get_subject())
     print(x.get_issuer())
@@ -32,9 +39,46 @@ def getcert(addr):
         n = e.get_short_name()
         print("{} {}".format(n, e.__str__()))
 
+    try:
+        s = lite.connect(dbfile)
+        cur = s.cursor()
+        try:
+            cur.execute("CREATE TABLE certs(id INT PRIMARY KEY, datestamp INT, target TEXT, port INT, cert TEXT)")
+        except lite.OperationalError as e:
+            #print(e)
+            pass
+        try:
+            cur.execute("INSERT INTO certs(datestamp, target, port, cert) VALUES ({}, '{}', {}, '{}')".format(datetime.now().strftime("%s"), args.target, args.port, cert))
+            s.commit()
+        except:
+            print("could not insert data: {}".format(e))
+    except lite.Error as e:
+        print("failed to connect to {}: {}".format(dbfile, e))
+        sys.exit(1)
+
+    s.close()
 
 
-def main(argv):
+def report(args):
+    print("connecting to {}".format(dbfile))
+    try:
+        s = lite.connect(dbfile)
+        cur = s.cursor()
+        try:
+            cur.execute("select * from certs")
+        except:
+            print("select failed")
+    except lite.Error as e:
+        print("failed to connect to {}: {}".format(dbfile, e))
+        sys.exit(1)
+
+    rows = cur.fetchall()
+    for row in rows:
+        print(row)
+
+
+
+def main():
     parser = argparse.ArgumentParser(description='Catalog x509 certificates.')
 
     # positional argument
@@ -43,7 +87,7 @@ def main(argv):
                         choices=['host', 'scan', 'file', 'dir', 'sniff', 'report'],
                         help='operating mode')
     # optional arguments
-    parser.add_argument('-t', action='store', dest='target', default='', help='host to test')
+    parser.add_argument('-t', action='store', dest='target', default='localhost', help='host to test')
     parser.add_argument('-p', action='store', dest='port', default=443, help='port to test')
     parser.add_argument('-f', action='store', dest='db', default='certi.db', help='certificate db')
 
@@ -52,10 +96,11 @@ def main(argv):
     target = args.target
     port = args.port
 
-    modes = {'host': getcert((target,port))}
+    modes = {'host': getcert,
+             'report': report}
 
     try:
-        modes[args.mode]
+        modes[args.mode](args)
     except:
         print("Invalid command line arguments.")
         raise
@@ -63,6 +108,6 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    main(sys.argv)
+    main()
 
 
