@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
 
+import argparse
 import json
+import os
 import sys
 import ssl
 import OpenSSL.crypto
+import sqlite3
 
 # https://pyopenssl.org/en/stable/api/crypto.html
 #print(ssl.OPENSSL_VERSION)
 CA_FILE = '/etc/ssl/certs/ca-certificates.crt'
 
+dir_path = os.path.dirname(os.path.realpath(__file__))
+dbfile = dir_path + 'certi.db'
+
 
 def getcert(addr):
-    return ssl.get_server_certificate(addr)
-
-
-def main(argv):
-    host = argv[1]
-    port = int(argv[2]) if len(argv) > 2 else 443
-    cert = getcert((host, port))
+    cert = ssl.get_server_certificate(addr)
     print(cert)
-
+    
     x = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
     print(x.get_subject())
     print(x.get_issuer())
@@ -33,6 +33,36 @@ def main(argv):
         print("{} {}".format(n, e.__str__()))
 
 
+
+def main(argv):
+    parser = argparse.ArgumentParser(description='Catalog x509 certificates.')
+
+    # positional argument
+    parser.add_argument('mode',
+                        action='store',
+                        choices=['host', 'scan', 'file', 'dir', 'sniff', 'report'],
+                        help='operating mode')
+    # optional arguments
+    parser.add_argument('-t', action='store', dest='target', default='', help='host to test')
+    parser.add_argument('-p', action='store', dest='port', default=443, help='port to test')
+    parser.add_argument('-f', action='store', dest='db', default='certi.db', help='certificate db')
+
+    args = parser.parse_args()
+
+    target = args.target
+    port = args.port
+
+    modes = {'host': getcert((target,port))}
+
+    try:
+        modes[args.mode]
+    except:
+        print("Invalid command line arguments.")
+        raise
+        sys.exit()
+
+
 if __name__ == "__main__":
     main(sys.argv)
+
 
