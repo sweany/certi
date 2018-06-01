@@ -40,16 +40,15 @@ def getcert(args):
         print("{} {}".format(n, e.__str__()))
 
     try:
-        s = lite.connect(dbfile)
+        s = lite.connect(dbfile, isolation_level=None)
         cur = s.cursor()
         try:
-            cur.execute("CREATE TABLE certs(id INT PRIMARY KEY, datestamp INT, target TEXT, port INT, cert TEXT)")
+            cur.execute("CREATE TABLE IF NOT EXISTS certs(id INTEGER PRIMARY KEY AUTOINCREMENT, datestamp INT, target TEXT, port INT, cert TEXT)")
         except lite.OperationalError as e:
             #print(e)
             pass
         try:
             cur.execute("INSERT INTO certs(datestamp, target, port, cert) VALUES ({}, '{}', {}, '{}')".format(datetime.now().strftime("%s"), args.target, args.port, cert))
-            s.commit()
         except:
             print("could not insert data: {}".format(e))
     except lite.Error as e:
