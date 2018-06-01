@@ -23,6 +23,10 @@ def getcert(args):
     except ConnectionRefusedError as e:
         print("Unable to get certificate: {}".format(e))
         sys.exit(1)
+    except ssl.SSLError as e:
+        print("SSL error: {}".format(e))
+        print("Your openssl version ({}) may not support any common ciphers with the target.".format(ssl.OPENSSL_VERSION))
+        sys.exit(1)
 
     #print(cert)
     #print("{}  {}:{}".format(str(datetime.now()), args.target, args.port))
@@ -101,7 +105,7 @@ def main():
     try:
         modes[args.mode](args)
     except:
-        print("Invalid command line arguments.")
+        #print("Invalid command line arguments.")
         raise
         sys.exit()
 
