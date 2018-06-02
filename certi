@@ -90,9 +90,10 @@ def mode_host(args):
 
 
 def mode_report(args):
-    print("connecting to {}".format(dbfile))
+    #print("connecting to {}".format(dbfile))
     try:
         s = lite.connect(dbfile)
+        s.row_factory = lite.Row # this allows calling columns by name instead of index
         cur = s.cursor()
         try:
             cur.execute("select * from certs")
@@ -104,7 +105,7 @@ def mode_report(args):
 
     rows = cur.fetchall()
     for row in rows:
-        print(row)
+        print("{}  {}:{}  {} ; {} ; {}  {}".format(row['datestamp'], row['target'], row['port'], row['subject'], row['issuer'], row['notafter'], row['san']))
 
 
 def main():
