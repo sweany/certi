@@ -62,6 +62,12 @@ def cert_insert(target, port, cert):
             pass
         try:
             x = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
+            san = ''
+            for i in range(x.get_extension_count()-1):
+                e = x.get_extension(i)
+                n = e.get_short_name().decode()
+                if n == "subjectAltName":
+                    san = e.__str__()
             cur.execute("INSERT INTO certs(datestamp, target, port, subject, issuer, sn, sigalgo, notbefore, notafter, san, cert) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (datetime.now().strftime("%s"),
                  target,
@@ -72,7 +78,7 @@ def cert_insert(target, port, cert):
                  x.get_signature_algorithm().decode(),
                  x.get_notBefore().decode(),
                  x.get_notAfter().decode(),
-                 '',
+                 san,
                  cert))
         except lite.Error as e:
             print("could not insert data: {}".format(e))
@@ -105,7 +111,13 @@ def mode_report(args):
 
     rows = cur.fetchall()
     for row in rows:
-        print("{}  {}:{}  {} ; {} ; {}  {}".format(row['datestamp'], row['target'], row['port'], row['subject'], row['issuer'], row['notafter'], row['san']))
+        print("{}  {}:{}  {} ; {}  {}".format(
+            datetime.fromtimestamp(int(row['datestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
+            row['target'],
+            row['port'],
+            row['subject'],
+            row['notafter'],
+            row['san']))
 
 
 def main():
