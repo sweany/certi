@@ -29,16 +29,13 @@ def getcert(args):
         sys.exit(1)
     return cert
 
-def mode_host(args):
-    cert = getcert(args)
-    print_cert(cert)
-    cert_insert(args.target, args.port, cert)
 
 def tostr_subject(subject):
     s = "/"
     for n, v in subject:
         s += "{}={}/".format(n.decode(), v.decode())
     return s
+
 
 def print_cert(cert):
     x = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
@@ -86,6 +83,12 @@ def cert_insert(target, port, cert):
     s.close()
 
 
+def mode_host(args):
+    cert = getcert(args)
+    print_cert(cert)
+    cert_insert(args.target, args.port, cert)
+
+
 def mode_report(args):
     print("connecting to {}".format(dbfile))
     try:
@@ -104,7 +107,6 @@ def mode_report(args):
         print(row)
 
 
-
 def main():
     parser = argparse.ArgumentParser(description='Catalog x509 certificates.')
 
@@ -119,9 +121,6 @@ def main():
     parser.add_argument('-f', action='store', dest='db', default='certi.db', help='certificate db')
 
     args = parser.parse_args()
-
-    target = args.target
-    port = args.port
 
     modes = {'host': mode_host,
              'report': mode_report}
