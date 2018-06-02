@@ -2,8 +2,11 @@
 
 import argparse
 from datetime import datetime
+import ipaddress
 import json
 import os
+import re
+from socket import *
 import sys
 import ssl
 import OpenSSL.crypto
@@ -17,17 +20,18 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 dbfile = dir_path + '/certi.db'
 
 
-def getcert(args):
+def getcert(host, port):
     try:
-        cert = ssl.get_server_certificate((args.target, args.port))
+        setdefaulttimeout(1)
+        cert = ssl.get_server_certificate((host, port))
+        return cert
     except ConnectionRefusedError as e:
         print("Unable to get certificate: {}".format(e))
-        sys.exit(1)
     except ssl.SSLError as e:
         print("SSL error: {}".format(e))
         print("Your openssl version ({}) may not support any common ciphers with the target.".format(ssl.OPENSSL_VERSION))
-        sys.exit(1)
-    return cert
+    except:
+        print("unknown exception")
 
 
 def tostr_subject(subject):
@@ -38,7 +42,11 @@ def tostr_subject(subject):
 
 
 def print_cert(cert):
-    x = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
+    try:
+        x = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
+    except:
+        print("unable to parse certificate object")
+        return
     print("                 Subject: {}".format(tostr_subject(x.get_subject().get_components())))
     print("                  Issuer: {}".format(tostr_subject(x.get_issuer().get_components())))
     print("           Serial Number: {}".format(x.get_serial_number()))
@@ -90,9 +98,27 @@ def cert_insert(target, port, cert):
 
 
 def mode_host(args):
-    cert = getcert(args)
+    cert = getcert(args.target, args.port)
     print_cert(cert)
     cert_insert(args.target, args.port, cert)
+
+
+def mode_scan(args):
+    # need to parse target value
+    # split out by commas, then expand from ranges ('-'), then handle cidr blocks
+    #list_targets = []
+    #list_ports = []
+    #list1 = args.target.split(',')
+    #for item in list1:
+    list = ipaddress.ip_network(args.target)
+    for item in list:
+        if re.search('\.0$', str(item)):
+            print("skipping " + str(item))
+            continue
+        print(item)
+        cert = getcert(str(item), 443)
+        print_cert(cert)
+        cert_insert(str(item), 443, cert)
 
 
 def mode_report(args):
@@ -123,6 +149,7 @@ def mode_report(args):
 def main():
     # program modes
     modes = {'host': mode_host,
+             'scan': mode_scan,
              'report': mode_report}
 
     parser = argparse.ArgumentParser(description='Catalog x509 certificates.')
