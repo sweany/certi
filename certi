@@ -27,33 +27,57 @@ def getcert(args):
         print("SSL error: {}".format(e))
         print("Your openssl version ({}) may not support any common ciphers with the target.".format(ssl.OPENSSL_VERSION))
         sys.exit(1)
+    return cert
 
-    #print(cert)
-    #print("{}  {}:{}".format(str(datetime.now()), args.target, args.port))
+def mode_host(args):
+    cert = getcert(args)
+    print_cert(cert)
+    cert_insert(args.target, args.port, cert)
 
+def tostr_subject(subject):
+    s = "/"
+    for n, v in subject:
+        s += "{}={}/".format(n.decode(), v.decode())
+    return s
+
+def print_cert(cert):
     x = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
-    print(x.get_subject())
-    print(x.get_issuer())
+    print(tostr_subject(x.get_subject().get_components()))
+    print(tostr_subject(x.get_issuer().get_components()))
     print(x.get_serial_number())
-    print(x.get_signature_algorithm())
-    print(x.get_notBefore())
-    print(x.get_notAfter())
+    print(x.get_signature_algorithm().decode())
+    print(x.get_notBefore().decode())
+    print(x.get_notAfter().decode())
     for i in range(x.get_extension_count()-1):
         e = x.get_extension(i)
         n = e.get_short_name()
-        print("{} {}".format(n, e.__str__()))
+        print("{} {}".format(n.decode(), e.__str__()))
 
+
+def cert_insert(target, port, cert):
     try:
         s = lite.connect(dbfile, isolation_level=None)
         cur = s.cursor()
         try:
-            cur.execute("CREATE TABLE IF NOT EXISTS certs(id INTEGER PRIMARY KEY AUTOINCREMENT, datestamp INT, target TEXT, port INT, cert TEXT)")
+            cur.execute("CREATE TABLE IF NOT EXISTS certs(id INTEGER PRIMARY KEY AUTOINCREMENT, datestamp INT, target VARCHAR, port INT, subject VARCHAR, issuer VARCHAR, sn VARCHAR, sigalgo VARCHAR, notbefore VARCHAR, notafter VARCHAR, san TEXT, cert TEXT)")
         except lite.OperationalError as e:
             #print(e)
             pass
         try:
-            cur.execute("INSERT INTO certs(datestamp, target, port, cert) VALUES ({}, '{}', {}, '{}')".format(datetime.now().strftime("%s"), args.target, args.port, cert))
-        except:
+            x = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
+            cur.execute("INSERT INTO certs(datestamp, target, port, subject, issuer, sn, sigalgo, notbefore, notafter, san, cert) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (datetime.now().strftime("%s"),
+                 target,
+                 port,
+                 tostr_subject(x.get_subject().get_components()),
+                 tostr_subject(x.get_issuer().get_components()),
+                 str(x.get_serial_number()),
+                 x.get_signature_algorithm().decode(),
+                 x.get_notBefore().decode(),
+                 x.get_notAfter().decode(),
+                 '',
+                 cert))
+        except lite.Error as e:
             print("could not insert data: {}".format(e))
     except lite.Error as e:
         print("failed to connect to {}: {}".format(dbfile, e))
@@ -62,7 +86,7 @@ def getcert(args):
     s.close()
 
 
-def report(args):
+def mode_report(args):
     print("connecting to {}".format(dbfile))
     try:
         s = lite.connect(dbfile)
@@ -99,8 +123,8 @@ def main():
     target = args.target
     port = args.port
 
-    modes = {'host': getcert,
-             'report': report}
+    modes = {'host': mode_host,
+             'report': mode_report}
 
     try:
         modes[args.mode](args)
