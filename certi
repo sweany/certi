@@ -6,7 +6,7 @@ import ipaddress
 import json
 import os
 import re
-from socket import *
+from socket import setdefaulttimeout
 import sys
 import ssl
 import OpenSSL.crypto
@@ -60,6 +60,8 @@ def print_cert(cert):
 
 
 def cert_insert(target, port, cert):
+    if not cert:
+        return
     try:
         s = lite.connect(dbfile, isolation_level=None)
         cur = s.cursor()
@@ -106,19 +108,17 @@ def mode_host(args):
 def mode_scan(args):
     # need to parse target value
     # split out by commas, then expand from ranges ('-'), then handle cidr blocks
-    #list_targets = []
-    #list_ports = []
-    #list1 = args.target.split(',')
-    #for item in list1:
-    list = ipaddress.ip_network(args.target)
-    for item in list:
+    list_ports = str(args.port).split(',')
+    list_targets = ipaddress.ip_network(args.target)
+    for item in list_targets:
         if re.search('\.0$', str(item)):
             print("skipping " + str(item))
             continue
-        print(item)
-        cert = getcert(str(item), 443)
-        print_cert(cert)
-        cert_insert(str(item), 443, cert)
+        for p in list_ports:
+            print("{}:{}".format(str(item), p))
+            cert = getcert(str(item), p)
+            print_cert(cert)
+            cert_insert(str(item), p, cert)
 
 
 def mode_report(args):
