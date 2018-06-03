@@ -144,10 +144,15 @@ def mode_scan2(args):
     threads = []
     results = {}
     list_targets = ipaddress.ip_network(args.target)
+    list_ports = str(args.port).split(',')
     for item in list_targets:
-        t = threading.Thread(target=worker, args=(item, args.port, results))
-        threads.append(t)
-        t.start()
+        if re.search('\.0|255$', str(item)):
+            print("skipping " + str(item))
+            continue
+        for p in list_ports:
+            t = threading.Thread(target=worker, args=(item, p, results))
+            threads.append(t)
+            t.start()
 
     print("waiting for all threads to finish")
     for t in threads:
