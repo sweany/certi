@@ -142,7 +142,8 @@ def mode_report(args):
 
     rows = cur.fetchall()
     for row in rows:
-        print("{}  {}:{}  {} ; {}  {}".format(
+        print("{:4} {}  {}:{}  {} ; {}  {}".format(
+            row['id'],
             datetime.fromtimestamp(int(row['datestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
             row['target'],
             row['port'],
