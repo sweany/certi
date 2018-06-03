@@ -171,24 +171,39 @@ def mode_report(args):
         s = lite.connect(dbfile)
         s.row_factory = lite.Row  # this allows calling columns by name instead of index
         cur = s.cursor()
-        try:
-            cur.execute("select * from certs")
-        except:
-            print("select failed")
     except lite.Error as e:
         print("failed to connect to {}: {}".format(dbfile, e))
         sys.exit(1)
 
-    rows = cur.fetchall()
-    for row in rows:
-        print("{:4} {}  {}:{}  {} ; {}  {}".format(
-            row['id'],
-            datetime.fromtimestamp(int(row['datestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
-            row['target'],
-            row['port'],
-            row['subject'],
-            row['notafter'],
-            row['san']))
+    if args.id:
+        # display details of individual cert
+        try:
+            cur.execute("select datestamp, target, port, cert from certs where id = ?", (args.id,))
+            row = cur.fetchone()
+            print("{}  {}:{}:".format(
+                  datetime.fromtimestamp(int(row['datestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
+                  row['target'],
+                  row['port']))
+            print()
+            print_cert(row['cert'])
+        except lite.ProgrammingError as e:
+            print("exception: {}".format(e))
+    else:
+        # simply list all certs in the db
+        try:
+            cur.execute("select * from certs")
+        except:
+            print("select failed")
+        rows = cur.fetchall()
+        for row in rows:
+            print("{:4} {}  {}:{}  {} ; {}  {}".format(
+                row['id'],
+                datetime.fromtimestamp(int(row['datestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
+                row['target'],
+                row['port'],
+                row['subject'],
+                row['notafter'],
+                row['san']))
 
 
 def main():
@@ -213,6 +228,7 @@ def main():
     #parser.add_argument('-t', action='store', dest='target', default='localhost', help='host to test')
     parser.add_argument('-p', action='store', dest='port', default=443, help='port to test')
     parser.add_argument('-f', action='store', dest='db', default='certi.db', help='certificate db')
+    parser.add_argument('-i', action='store', dest='id', default=0, help='certificate id')
 
     args = parser.parse_args()
 
