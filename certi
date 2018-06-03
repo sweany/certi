@@ -56,7 +56,10 @@ def print_cert(cert):
     for i in range(x.get_extension_count()-1):
         e = x.get_extension(i)
         n = e.get_short_name()
-        print("{0:>24}: {1}".format(n.decode(), e.__str__()))
+        try:
+            print("{0:>24}: {1}".format(n.decode(), e.__str__()))
+        except OpenSSL.crypto.Error as e:
+            pass
 
 
 def cert_insert(target, port, cert):
