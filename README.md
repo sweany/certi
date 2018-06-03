@@ -11,9 +11,10 @@ Lofty goals for functionality:
 * sniffing mode
 * file mode
 * directory mode
-* logging to syslog
+* machine-readable output--json perhaps
 * storing certificate details in sqlite db
 * reporting on stored certs
+* HTML output
 
 
 ## Example
