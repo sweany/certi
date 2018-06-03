@@ -9,6 +9,7 @@ import re
 from socket import setdefaulttimeout
 import sys
 import ssl
+import threading
 import OpenSSL.crypto
 import sqlite3 as lite
 
@@ -125,6 +126,36 @@ def mode_scan(args):
             print_cert(cert)
             cert_insert(str(item), p, cert)
 
+def worker(host, port, results):
+    id = "{}:{}".format(host, port)
+    print("thread for {} started".format(id))
+    setdefaulttimeout(2)
+    try:
+        cert = ssl.get_server_certificate((str(host), str(port)))
+        results[id] = cert
+    except TypeError as e:
+        print(e)
+    except:
+        pass
+    print("thread for {}:{} done".format(host, port))
+
+
+def mode_scan2(args):
+    threads = []
+    results = {}
+    list_targets = ipaddress.ip_network(args.target)
+    for item in list_targets:
+        t = threading.Thread(target=worker, args=(item, args.port, results))
+        threads.append(t)
+        t.start()
+
+    for t in threads:
+        t.join()
+
+    print("output certs")
+    for k, v in results.items():
+        print_cert(v)
+
 
 def mode_report(args):
     #print("connecting to {}".format(dbfile))
@@ -155,7 +186,7 @@ def mode_report(args):
 def main():
     # program modes
     modes = {'host': mode_host,
-             'scan': mode_scan,
+             'scan': mode_scan2,
              'report': mode_report}
 
     parser = argparse.ArgumentParser(description='Catalog x509 certificates.')
