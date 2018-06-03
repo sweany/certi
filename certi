@@ -23,7 +23,7 @@ dbfile = dir_path + '/certi.db'
 
 def getcert(host, port):
     try:
-        setdefaulttimeout(1)
+        setdefaulttimeout(5)
         cert = ssl.get_server_certificate((host, port))
         return cert
     except ConnectionRefusedError as e:
@@ -129,7 +129,7 @@ def mode_scan(args):
 def worker(host, port, results):
     id = "{}:{}".format(host, port)
     print("thread for {} started".format(id))
-    setdefaulttimeout(2)
+    setdefaulttimeout(5)
     try:
         cert = ssl.get_server_certificate((str(host), str(port)))
         results[id] = cert
@@ -149,12 +149,15 @@ def mode_scan2(args):
         threads.append(t)
         t.start()
 
+    print("waiting for all threads to finish")
     for t in threads:
         t.join()
 
-    print("output certs")
     for k, v in results.items():
+        (host,port) = k.split(':')
+        print("cert found on {}:{}:".format(host, port))
         print_cert(v)
+        cert_insert(host, port, v)
 
 
 def mode_report(args):
