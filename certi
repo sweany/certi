@@ -31,7 +31,7 @@ def getcert(host, port):
         print("SSL error: {}".format(e))
         print("Your openssl version ({}) may not support any common ciphers with the target.".format(ssl.OPENSSL_VERSION))
     except:
-        print("unknown exception")
+        pass
 
 
 def tostr_subject(subject):
@@ -42,6 +42,8 @@ def tostr_subject(subject):
 
 
 def print_cert(cert):
+    if not cert:
+        return
     try:
         x = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
     except:
@@ -114,7 +116,7 @@ def mode_scan(args):
     list_ports = str(args.port).split(',')
     list_targets = ipaddress.ip_network(args.target)
     for item in list_targets:
-        if re.search('\.0$', str(item)):
+        if re.search('\.0|255$', str(item)):
             print("skipping " + str(item))
             continue
         for p in list_ports:
