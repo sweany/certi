@@ -74,7 +74,7 @@ def cert_insert(target, port, cert):
         s = lite.connect(dbfile, isolation_level=None)
         cur = s.cursor()
         try:
-            cur.execute("CREATE TABLE IF NOT EXISTS certs(id INTEGER PRIMARY KEY AUTOINCREMENT, datestamp INT, target VARCHAR, port INT, subject VARCHAR, issuer VARCHAR, sn VARCHAR, sigalgo VARCHAR, notbefore VARCHAR, notafter VARCHAR, san TEXT, cert TEXT)")
+            cur.execute("CREATE TABLE IF NOT EXISTS certs(id INTEGER PRIMARY KEY AUTOINCREMENT, datestamp INT, target VARCHAR, port INT, subject VARCHAR, issuer VARCHAR, sn VARCHAR, bits INT, sigalgo VARCHAR, notbefore VARCHAR, notafter VARCHAR, san TEXT, cert TEXT)")
         except lite.OperationalError as e:
             #print(e)
             pass
@@ -86,13 +86,14 @@ def cert_insert(target, port, cert):
                 n = e.get_short_name().decode()
                 if n == "subjectAltName":
                     san = e.__str__()
-            cur.execute("INSERT INTO certs(datestamp, target, port, subject, issuer, sn, sigalgo, notbefore, notafter, san, cert) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            cur.execute("INSERT INTO certs(datestamp, target, port, subject, issuer, sn, bits, sigalgo, notbefore, notafter, san, cert) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                         (datetime.now().strftime("%s"),
                         target,
                         port,
                         tostr_subject(x.get_subject().get_components()),
                         tostr_subject(x.get_issuer().get_components()),
                         str(x.get_serial_number()),
+                        x.get_pubkey().bits(),
                         x.get_signature_algorithm().decode(),
                         x.get_notBefore().decode(),
                         x.get_notAfter().decode(),
