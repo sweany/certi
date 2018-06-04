@@ -195,6 +195,24 @@ def parse_file(file):
     fh.close()
     return list
 
+def mode_delete(args):
+    try:
+        s = lite.connect(dbfile)
+        s.row_factory = lite.Row  # this allows calling columns by name instead of index
+        cur = s.cursor()
+    except lite.Error as e:
+        print("failed to connect to {}: {}".format(dbfile, e))
+        sys.exit(1)
+
+    if args.id:
+        try:
+            cur.execute("delete from certs where id = ?", (args.id,))
+            s.commit()
+            print("deleted record {}".format(args.id))
+        except lite.ProgrammingError as e:
+            print("exception: {}".format(e))
+
+    s.close()
 
 def mode_report(args):
     try:
@@ -234,6 +252,7 @@ def mode_report(args):
                 row['subject'],
                 row['notafter'],
                 row['san']))
+    s.close()
 
 
 def main():
@@ -241,6 +260,7 @@ def main():
     modes = {'host': mode_host,
              'scan': mode_scan2,
              'file': mode_file,
+             'delete': mode_delete,
              'report': mode_report}
 
     parser = argparse.ArgumentParser(description='Catalog x509 certificates.')
@@ -248,7 +268,7 @@ def main():
     # positional arguments
     parser.add_argument('mode',
                         action='store',
-                        choices=['host', 'scan', 'file', 'dir', 'sniff', 'report'],
+                        choices=['host', 'scan', 'file', 'dir', 'sniff', 'report', 'delete'],
                         help='operating mode')
     parser.add_argument('target',
                         action='store',
