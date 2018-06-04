@@ -226,6 +226,39 @@ def mode_report(args):
         print("failed to connect to {}: {}".format(dbfile, e))
         sys.exit(1)
 
+    if args.target == 'stats':
+        keys = {}
+        sigs = {}
+        cur.execute("select bits, sigalgo from certs")
+        rows = cur.fetchall()
+        for row in rows:
+            bits = str(row['bits'])
+            sigalgo = str(row['sigalgo'])
+            #print(row['bits'], row['sigalgo'])
+            try:
+                keys[bits] += 1
+            except:
+                keys[bits] = 1
+            try:
+                sigs[sigalgo] += 1
+            except:
+                sigs[sigalgo] = 1
+
+        # keysize stats
+        print("===== Key Sizes")
+        skeys = sorted(keys, key=keys.__getitem__, reverse=True)
+        for k in skeys:
+            print("{:5}  {}".format(keys[k], k))
+        print()
+
+        # Signature algorithm stats
+        print("===== Signature Algorithms")
+        ssigs = sorted(sigs, key=sigs.__getitem__, reverse=True)
+        for k in ssigs:
+            print("{:5}  {}".format(sigs[k], k))
+        print()
+        sys.exit()
+
     if args.id:
         # display details of individual cert
         try:
