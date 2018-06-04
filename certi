@@ -176,27 +176,29 @@ def mode_file(args):
         print_cert(cert)
         cert_insert(gethostname(), args.target, cert)
 
+
 def parse_file(file):
-    list = []
+    list_certs = []
     fh = open(file, 'r')
     try:
         fh = open(file, 'r')
     except IOError as e:
-        print("unable to open {}: {}".format(args.target, e))
+        print("unable to open {}: {}".format(file, e))
 
     for line in fh:
         if '-----BEGIN CERTIFICATE-----' in line:
             cert = line
         elif '-----END CERTIFICATE-----' in line:
             cert += line
-            list.append(cert)
+            list_certs.append(cert)
             print(cert)
             cert = ''
         else:
             cert += line
 
     fh.close()
-    return list
+    return list_certs
+
 
 def mode_delete(args):
     try:
@@ -216,6 +218,7 @@ def mode_delete(args):
             print("exception: {}".format(e))
 
     s.close()
+
 
 def mode_report(args):
     try:
