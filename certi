@@ -50,9 +50,11 @@ def print_cert(cert):
     except:
         print("unable to parse certificate object")
         return
+
     print("                 Subject: {}".format(tostr_subject(x.get_subject().get_components())))
     print("                  Issuer: {}".format(tostr_subject(x.get_issuer().get_components())))
     print("           Serial Number: {}".format(x.get_serial_number()))
+    print("                Key Size: {}".format(x.get_pubkey().bits()))
     print("     Signature Algorithm: {}".format(x.get_signature_algorithm().decode()))
     print("         Validity period: {}  {}".format(x.get_notBefore().decode(), x.get_notAfter().decode()))
     print()
