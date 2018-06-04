@@ -6,7 +6,7 @@ import ipaddress
 import json
 import os
 import re
-from socket import setdefaulttimeout
+from socket import gethostname, setdefaulttimeout
 import sys
 import ssl
 import threading
@@ -14,7 +14,7 @@ import OpenSSL.crypto
 import sqlite3 as lite
 
 # https://pyopenssl.org/en/stable/api/crypto.html
-#print(ssl.OPENSSL_VERSION)
+
 CA_FILE = '/etc/ssl/certs/ca-certificates.crt'
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -126,6 +126,7 @@ def mode_scan(args):
             print_cert(cert)
             cert_insert(str(item), p, cert)
 
+
 def worker(host, port, results):
     id = "{}:{}".format(host, port)
     print("thread for {} started".format(id))
@@ -159,14 +160,27 @@ def mode_scan2(args):
         t.join()
 
     for k, v in results.items():
-        (host,port) = k.split(':')
+        (host, port) = k.split(':')
         print("cert found on {}:{}:".format(host, port))
         print_cert(v)
         cert_insert(host, port, v)
 
 
+def mode_file(args):
+    print("File {}:{}:".format(gethostname(), args.target))
+    try:
+        fh = open(args.target, 'r')
+        cert = fh.read()
+        fh.close()
+    except IOError as e:
+        print("unable to open {}: {}".format(args.target, e))
+    
+    print_cert(cert)
+    cert_insert(gethostname(), args.target, cert)
+
+
+
 def mode_report(args):
-    #print("connecting to {}".format(dbfile))
     try:
         s = lite.connect(dbfile)
         s.row_factory = lite.Row  # this allows calling columns by name instead of index
@@ -210,11 +224,12 @@ def main():
     # program modes
     modes = {'host': mode_host,
              'scan': mode_scan2,
+             'file': mode_file,
              'report': mode_report}
 
     parser = argparse.ArgumentParser(description='Catalog x509 certificates.')
 
-    # positional argument
+    # positional arguments
     parser.add_argument('mode',
                         action='store',
                         choices=['host', 'scan', 'file', 'dir', 'sniff', 'report'],
@@ -225,7 +240,6 @@ def main():
                         nargs='?',
                         help='target of operating mode; host or network or file etc.')
     # optional arguments
-    #parser.add_argument('-t', action='store', dest='target', default='localhost', help='host to test')
     parser.add_argument('-p', action='store', dest='port', default=443, help='port to test')
     parser.add_argument('-f', action='store', dest='db', default='certi.db', help='certificate db')
     parser.add_argument('-i', action='store', dest='id', default=0, help='certificate id')
@@ -239,8 +253,6 @@ def main():
     try:
         modes[args.mode](args)
     except:
-        #print("Invalid command line arguments.")
-        raise
         sys.exit()
 
 
