@@ -168,16 +168,32 @@ def mode_scan2(args):
 
 def mode_file(args):
     print("File {}:{}:".format(gethostname(), args.target))
+    certs = parse_file(args.target)
+    for cert in certs:
+        print_cert(cert)
+        cert_insert(gethostname(), args.target, cert)
+
+def parse_file(file):
+    list = []
+    fh = open(file, 'r')
     try:
-        fh = open(args.target, 'r')
-        cert = fh.read()
-        fh.close()
+        fh = open(file, 'r')
     except IOError as e:
         print("unable to open {}: {}".format(args.target, e))
-    
-    print_cert(cert)
-    cert_insert(gethostname(), args.target, cert)
 
+    for line in fh:
+        if '-----BEGIN CERTIFICATE-----' in line:
+            cert = line
+        elif '-----END CERTIFICATE-----' in line:
+            cert += line
+            list.append(cert)
+            print(cert)
+            cert = ''
+        else:
+            cert += line
+
+    fh.close()
+    return list
 
 
 def mode_report(args):
