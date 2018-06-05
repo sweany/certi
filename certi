@@ -132,7 +132,7 @@ def mode_scan(args):
 
 def worker(host, port, results):
     id = "{}:{}".format(host, port)
-    print("thread for {} started".format(id))
+    #print("thread for {} started".format(id))
     setdefaulttimeout(5)
     try:
         cert = ssl.get_server_certificate((str(host), str(port)))
@@ -141,7 +141,7 @@ def worker(host, port, results):
         print(e)
     except:
         pass
-    print("thread for {}:{} done".format(host, port))
+    #print("thread for {}:{} done".format(host, port))
 
 
 def mode_scan2(args):
@@ -179,24 +179,22 @@ def mode_file(args):
 
 def parse_file(file):
     list_certs = []
-    fh = open(file, 'r')
     try:
-        fh = open(file, 'r')
+        with open(file, 'r') as source:
+            cert = ""
+            for line in source.readlines():
+                if '-----BEGIN CERTIFICATE-----' in line:
+                    cert = line
+                elif '-----END CERTIFICATE-----' in line:
+                    cert += line
+                    list_certs.append(cert)
+                    print(cert)
+                    cert = ''
+                else:
+                    cert += line
     except IOError as e:
         print("unable to open {}: {}".format(file, e))
 
-    for line in fh:
-        if '-----BEGIN CERTIFICATE-----' in line:
-            cert = line
-        elif '-----END CERTIFICATE-----' in line:
-            cert += line
-            list_certs.append(cert)
-            print(cert)
-            cert = ''
-        else:
-            cert += line
-
-    fh.close()
     return list_certs
 
 
