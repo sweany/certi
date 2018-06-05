@@ -230,11 +230,13 @@ def mode_report(args):
     if args.target == 'stats':
         keys = {}
         sigs = {}
-        cur.execute("select bits, sigalgo from certs")
+        issuers = {}
+        cur.execute("select bits, sigalgo, issuer from certs")
         rows = cur.fetchall()
         for row in rows:
             bits = str(row['bits'])
             sigalgo = str(row['sigalgo'])
+            issuer = str(row['issuer'])
             #print(row['bits'], row['sigalgo'])
             try:
                 keys[bits] += 1
@@ -244,6 +246,10 @@ def mode_report(args):
                 sigs[sigalgo] += 1
             except:
                 sigs[sigalgo] = 1
+            try:
+                issuers[issuer] += 1
+            except:
+                issuers[issuer] = 1
 
         # keysize stats
         print("===== Key Sizes")
@@ -257,6 +263,13 @@ def mode_report(args):
         ssigs = sorted(sigs, key=sigs.__getitem__, reverse=True)
         for k in ssigs:
             print("{:5}  {}".format(sigs[k], k))
+        print()
+
+        # Issuer stats
+        print("===== Issuers")
+        sissuers = sorted(issuers, key=issuers.__getitem__, reverse=True)
+        for k in sissuers:
+            print("{:5}  {}".format(issuers[k], k))
         print()
         sys.exit()
 
