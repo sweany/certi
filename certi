@@ -218,6 +218,43 @@ def mode_delete(args):
     s.close()
 
 
+def mode_list(args):
+    try:
+        s = lite.connect(dbfile)
+        s.row_factory = lite.Row  # this allows calling columns by name instead of index
+        cur = s.cursor()
+    except lite.Error as e:
+        print("failed to connect to {}: {}".format(dbfile, e))
+        sys.exit(1)
+
+    if args.target:
+        try:
+            cur.execute('select * from certs where subject like ?', ('%'+args.target+'%',))
+        except lite.Error as e:
+            print("failed to select from db: {}".format(e))
+    else:
+        try:
+            cur.execute("select * from certs")
+        except lite.Error as e:
+            print("failed to select from db: {}".format(e))
+
+    rows = cur.fetchall()
+    for row in rows:
+        print("{:4} {}  {}:{}  {} bit  {}  notAfter {}\n\tSubject: {}\n\tIssuer: {}\n\tsubjectAltName: {}\n".format(
+            row['id'],
+            datetime.fromtimestamp(int(row['datestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
+            row['target'],
+            row['port'],
+            row['bits'],
+            row['sigalgo'],
+            row['notafter'],
+            row['subject'],
+            row['issuer'],
+            row['san']))
+
+    s.close()
+
+
 def mode_report(args):
     try:
         s = lite.connect(dbfile)
@@ -314,15 +351,16 @@ def main():
     modes = {'host': mode_host,
              'scan': mode_scan2,
              'file': mode_file,
-             'delete': mode_delete,
-             'report': mode_report}
+             'list': mode_list,
+             'report': mode_report,
+             'delete': mode_delete}
 
     parser = argparse.ArgumentParser(description='Catalog x509 certificates.')
 
     # positional arguments
     parser.add_argument('mode',
                         action='store',
-                        choices=['host', 'scan', 'file', 'dir', 'sniff', 'report', 'delete'],
+                        choices=['host', 'scan', 'file', 'dir', 'sniff', 'list', 'report', 'delete'],
                         help='operating mode')
     parser.add_argument('target',
                         action='store',
