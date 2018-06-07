@@ -13,8 +13,10 @@ Lofty goals for functionality:
 * directory mode
 * machine-readable output--json perhaps
 * storing certificate details in sqlite db
-* reporting on stored certs
+* listing and searching the stored certs for specific values
+* reporting stats on stored certs
 * HTML output
+* JSON output
 
 
 ## Example
