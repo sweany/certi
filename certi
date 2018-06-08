@@ -241,7 +241,7 @@ def mode_list(args):
 
     rows = cur.fetchall()
     for row in rows:
-        print("{:4} {}  {}:{}  {} bit  {}  notAfter {}\n\tSubject: {}\n\tIssuer: {}\n\tsubjectAltName: {}\n".format(
+        output = "{:4} {}  {}:{}  {} bit  {}  notAfter {}\n\tSubject: {}\n\tIssuer: {}\n\tsubjectAltName: {}\n".format(
             row['id'],
             datetime.fromtimestamp(int(row['datestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
             row['target'],
@@ -251,7 +251,11 @@ def mode_list(args):
             row['notafter'],
             row['subject'],
             row['issuer'],
-            row['san']))
+            row['san'])
+        if sys.stdout.isatty():
+            # highlight the term being searched for
+            output = output.replace(args.target, '\033[31m'+args.target+'\033[0m')
+        print(output)
 
     s.close()
 
