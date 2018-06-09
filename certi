@@ -233,6 +233,19 @@ def mode_list(args):
                 ('%'+args.target+'%','%'+args.target+'%','%'+args.target+'%','%'+args.target+'%','%'+args.target+'%','%'+args.target+'%','%'+args.target+'%','%'+args.target+'%','%'+args.target+'%'))
         except lite.Error as e:
             print("failed to select from db: {}".format(e))
+    elif args.id:
+        # display details of individual cert
+        try:
+            cur.execute("select datestamp, target, port, cert from certs where id = ?", (args.id,))
+            row = cur.fetchone()
+            print("{}  {}:{}:".format(
+                  datetime.fromtimestamp(int(row['datestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
+                  row['target'],
+                  row['port']))
+            print()
+            print_cert(row['cert'])
+        except lite.ProgrammingError as e:
+            print("exception: {}".format(e))
     else:
         try:
             cur.execute("select * from certs")
@@ -260,7 +273,7 @@ def mode_list(args):
     s.close()
 
 
-def mode_report(args):
+def mode_stats(args):
     try:
         s = lite.connect(dbfile)
         s.row_factory = lite.Row  # this allows calling columns by name instead of index
@@ -269,84 +282,49 @@ def mode_report(args):
         print("failed to connect to {}: {}".format(dbfile, e))
         sys.exit(1)
 
-    if args.target == 'stats':
-        keys = {}
-        sigs = {}
-        issuers = {}
-        cur.execute("select bits, sigalgo, issuer from certs")
-        rows = cur.fetchall()
-        for row in rows:
-            bits = str(row['bits'])
-            sigalgo = str(row['sigalgo'])
-            issuer = str(row['issuer'])
-            #print(row['bits'], row['sigalgo'])
-            try:
-                keys[bits] += 1
-            except:
-                keys[bits] = 1
-            try:
-                sigs[sigalgo] += 1
-            except:
-                sigs[sigalgo] = 1
-            try:
-                issuers[issuer] += 1
-            except:
-                issuers[issuer] = 1
-
-        # keysize stats
-        print("===== Key Sizes")
-        skeys = sorted(keys, key=keys.__getitem__, reverse=True)
-        for k in skeys:
-            print("{:5}  {}".format(keys[k], k))
-        print()
-
-        # Signature algorithm stats
-        print("===== Signature Algorithms")
-        ssigs = sorted(sigs, key=sigs.__getitem__, reverse=True)
-        for k in ssigs:
-            print("{:5}  {}".format(sigs[k], k))
-        print()
-
-        # Issuer stats
-        print("===== Issuers")
-        sissuers = sorted(issuers, key=issuers.__getitem__, reverse=True)
-        for k in sissuers:
-            print("{:5}  {}".format(issuers[k], k))
-        print()
-        sys.exit()
-
-    if args.id:
-        # display details of individual cert
+    keys = {}
+    sigs = {}
+    issuers = {}
+    cur.execute("select bits, sigalgo, issuer from certs")
+    rows = cur.fetchall()
+    for row in rows:
+        bits = str(row['bits'])
+        sigalgo = str(row['sigalgo'])
+        issuer = str(row['issuer'])
+        #print(row['bits'], row['sigalgo'])
         try:
-            cur.execute("select datestamp, target, port, cert from certs where id = ?", (args.id,))
-            row = cur.fetchone()
-            print("{}  {}:{}:".format(
-                  datetime.fromtimestamp(int(row['datestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
-                  row['target'],
-                  row['port']))
-            print()
-            print_cert(row['cert'])
-        except lite.ProgrammingError as e:
-            print("exception: {}".format(e))
-    else:
-        # simply list all certs in the db
-        try:
-            cur.execute("select * from certs")
+            keys[bits] += 1
         except:
-            print("select failed")
-        rows = cur.fetchall()
-        for row in rows:
-            print("{:4} {}  {}:{}  {} bit  {}  notAfter {}\n\tSubject: {}\n\tIssuer: {}\n\tsubjectAltName: {}\n".format(
-                row['id'],
-                datetime.fromtimestamp(int(row['datestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
-                row['target'],
-                row['port'],
-                row['bits'],
-                row['sigalgo'],
-                row['notafter'],
-                row['subject'],
-                row['issuer'],
-                row['san']))
+            keys[bits] = 1
+        try:
+            sigs[sigalgo] += 1
+        except:
+            sigs[sigalgo] = 1
+        try:
+            issuers[issuer] += 1
+        except:
+            issuers[issuer] = 1
+
+    # keysize stats
+    print("===== Key Sizes")
+    skeys = sorted(keys, key=keys.__getitem__, reverse=True)
+    for k in skeys:
+        print("{:5}  {}".format(keys[k], k))
+    print()
+
+    # Signature algorithm stats
+    print("===== Signature Algorithms")
+    ssigs = sorted(sigs, key=sigs.__getitem__, reverse=True)
+    for k in ssigs:
+        print("{:5}  {}".format(sigs[k], k))
+    print()
+
+    # Issuer stats
+    print("===== Issuers")
+    sissuers = sorted(issuers, key=issuers.__getitem__, reverse=True)
+    for k in sissuers:
+        print("{:5}  {}".format(issuers[k], k))
+    print()
 
     s.close()
 
@@ -357,7 +335,7 @@ def main():
              'scan': mode_scan2,
              'file': mode_file,
              'list': mode_list,
-             'report': mode_report,
+             'stats': mode_stats,
              'delete': mode_delete}
 
     parser = argparse.ArgumentParser(description='Catalog x509 certificates.')
@@ -365,7 +343,7 @@ def main():
     # positional arguments
     parser.add_argument('mode',
                         action='store',
-                        choices=['host', 'scan', 'file', 'dir', 'sniff', 'list', 'report', 'delete'],
+                        choices=['host', 'scan', 'file', 'dir', 'sniff', 'list', 'stats', 'delete'],
                         help='operating mode')
     parser.add_argument('target',
                         action='store',
