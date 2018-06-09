@@ -6,7 +6,7 @@ import ipaddress
 import json
 import os
 import re
-from socket import gethostname, setdefaulttimeout
+from socket import gethostbyname, gethostname, setdefaulttimeout
 import sys
 import ssl
 import threading
@@ -114,26 +114,11 @@ def mode_host(args):
     cert_insert(args.target, args.port, cert)
 
 
-def mode_scan(args):
-    # need to parse target value
-    # split out by commas, then expand from ranges ('-'), then handle cidr blocks
-    list_ports = str(args.port).split(',')
-    list_targets = ipaddress.ip_network(args.target)
-    for item in list_targets:
-        if re.search('\.0|255$', str(item)):
-            print("skipping " + str(item))
-            continue
-        for p in list_ports:
-            print("{}:{}".format(str(item), p))
-            cert = getcert(str(item), p)
-            print_cert(cert)
-            cert_insert(str(item), p, cert)
-
-
-def worker(host, port, results):
+def mode_scan_worker(host, port, results):
     id = "{}:{}".format(host, port)
     #print("thread for {} started".format(id))
     setdefaulttimeout(5)
+    print(gethostbyaddr(str(host)))
     try:
         cert = ssl.get_server_certificate((str(host), str(port)))
         results[id] = cert
@@ -144,7 +129,7 @@ def worker(host, port, results):
     #print("thread for {}:{} done".format(host, port))
 
 
-def mode_scan2(args):
+def mode_scan(args):
     threads = []
     results = {}
     list_targets = ipaddress.ip_network(args.target)
@@ -154,7 +139,7 @@ def mode_scan2(args):
             print("skipping " + str(item))
             continue
         for p in list_ports:
-            t = threading.Thread(target=worker, args=(item, p, results))
+            t = threading.Thread(target=mode_scan_worker, args=(item, p, results))
             threads.append(t)
             t.start()
 
