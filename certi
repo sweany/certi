@@ -6,7 +6,7 @@ import ipaddress
 import json
 import os
 import re
-from socket import gethostbyname, gethostname, setdefaulttimeout
+from socket import gethostbyaddr, gethostbyname, gethostname, setdefaulttimeout
 import sys
 import ssl
 import threading
@@ -317,7 +317,7 @@ def mode_stats(args):
 def main():
     # program modes
     modes = {'host': mode_host,
-             'scan': mode_scan2,
+             'scan': mode_scan,
              'file': mode_file,
              'list': mode_list,
              'stats': mode_stats,
