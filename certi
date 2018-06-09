@@ -6,7 +6,7 @@ import ipaddress
 import json
 import os
 import re
-from socket import gethostbyaddr, gethostbyname, gethostname, setdefaulttimeout
+from socket import inet_aton, gethostbyaddr, gethostbyname, gethostname, setdefaulttimeout
 import sys
 import ssl
 import threading
@@ -118,7 +118,13 @@ def mode_scan_worker(host, port, results):
     id = "{}:{}".format(host, port)
     #print("thread for {} started".format(id))
     setdefaulttimeout(5)
-    print(gethostbyaddr(str(host)))
+    if inet_aton(str(host)):
+        try:
+            answer = gethostbyaddr(str(host))
+            print(answer)
+        except:
+            #print ("unable to resolve {}".format(host))
+            pass
     try:
         cert = ssl.get_server_certificate((str(host), str(port)))
         results[id] = cert
@@ -239,13 +245,14 @@ def mode_list(args):
 
     rows = cur.fetchall()
     for row in rows:
-        output = "{:4} {}  {}:{}  {} bit  {}  notAfter {}\n\tSubject: {}\n\tIssuer: {}\n\tsubjectAltName: {}\n".format(
+        output = "{:4} {}  {}:{}  {} bit  {}  {} => {}\n\tSubject: {}\n\tIssuer: {}\n\tsubjectAltName: {}\n".format(
             row['id'],
             datetime.fromtimestamp(int(row['datestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
             row['target'],
             row['port'],
             row['bits'],
             row['sigalgo'],
+            row['notbefore'],
             row['notafter'],
             row['subject'],
             row['issuer'],
