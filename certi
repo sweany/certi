@@ -75,6 +75,7 @@ def cert_insert(target, port, cert):
         cur = s.cursor()
         try:
             cur.execute("CREATE TABLE IF NOT EXISTS certs(id INTEGER PRIMARY KEY AUTOINCREMENT, datestamp INT, target VARCHAR, port INT, subject VARCHAR, issuer VARCHAR, sn VARCHAR, bits INT, sigalgo VARCHAR, notbefore VARCHAR, notafter VARCHAR, san TEXT, cert TEXT)")
+            cur.execute("CREATE UNIQUE INDEX idx_cert ON certs(cert)")
         except lite.OperationalError as e:
             #print(e)
             pass
@@ -86,7 +87,6 @@ def cert_insert(target, port, cert):
                 n = e.get_short_name().decode()
                 if n == "subjectAltName":
                     san = e.__str__()
-            # check to see if the cert is already in the db here
             cur.execute("INSERT INTO certs(datestamp, target, port, subject, issuer, sn, bits, sigalgo, notbefore, notafter, san, cert) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                         (datetime.now().strftime("%s"),
                         target,
