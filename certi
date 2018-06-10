@@ -279,13 +279,28 @@ def mode_stats(args):
     stats['keysize'] = {}
     stats['sigs'] = {}
     stats['issuers'] = {}
-    cur.execute("select bits, sigalgo, issuer from certs")
+    stats['remaining'] = {}
+    cur.execute("select bits, sigalgo, issuer, notafter from certs")
     rows = cur.fetchall()
     for row in rows:
         bits = str(row['bits'])
         sigalgo = str(row['sigalgo'])
         issuer = str(row['issuer'])
+        notafter = str(row['notafter'])
+        remaining = datetime.strptime(notafter, "%Y%m%d%H%M%SZ") - datetime.now()
+        days = 0
         #print(row['bits'], row['sigalgo'])
+        if remaining.days < 0:
+            days = 'expired'
+        if remaining.days < 31:
+            days = '0-30'
+        elif remaining.days < 61:
+            days = '31-60'
+        elif remaining.days < 91:
+            days = '61-90'
+        else:
+            days = '90+'
+ 
         try:
             stats['keysize'][bits] += 1
         except:
@@ -298,29 +313,38 @@ def mode_stats(args):
             stats['issuers'][issuer] += 1
         except:
             stats['issuers'][issuer] = 1
+        try:
+            stats['remaining'][days] += 1
+        except:
+            stats['remaining'][days] = 1
 
     # keysize stats
     print("===== Key Sizes")
-    skeys = sorted(stats['keysize'], key=stats['keysize'].__getitem__, reverse=True)
-    for k in skeys:
+    s = sorted(stats['keysize'], key=stats['keysize'].__getitem__, reverse=True)
+    for k in s:
         print("{:5}  {}".format(stats['keysize'][k], k))
     print()
 
     # Signature algorithm stats
     print("===== Signature Algorithms")
-    ssigs = sorted(stats['sigs'], key=stats['sigs'].__getitem__, reverse=True)
-    for k in ssigs:
+    s = sorted(stats['sigs'], key=stats['sigs'].__getitem__, reverse=True)
+    for k in s:
         print("{:5}  {}".format(stats['sigs'][k], k))
     print()
 
     # Issuer stats
     print("===== Issuers")
-    sissuers = sorted(stats['issuers'], key=stats['issuers'].__getitem__, reverse=True)
-    for k in sissuers:
+    s = sorted(stats['issuers'], key=stats['issuers'].__getitem__, reverse=True)
+    for k in s:
         print("{:5}  {}".format(stats['issuers'][k], k))
     print()
 
     # time to expiration <30 days, 31-60, 61-90, 91+
+    print("===== Days until expiration")
+    s = sorted(stats['remaining'], key=stats['remaining'].__getitem__, reverse=True)
+    for k in s:
+        print("{:5}  {} days".format(stats['remaining'][k], k))
+    print()
 
     s.close()
 
