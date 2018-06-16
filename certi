@@ -304,7 +304,7 @@ def mode_stats(args):
         notafter = str(row['notafter'])
         remaining = datetime.strptime(notafter, "%Y%m%d%H%M%SZ") - datetime.now()
         days = 0
-        expiremonth = notafter[:6]
+        expiremonth = notafter[:4] + '-' + notafter[4:6]
         #print(row['bits'], row['sigalgo'])
         if remaining.days < 0:
             days = 'expired'
