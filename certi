@@ -294,6 +294,7 @@ def mode_stats(args):
     stats['issuers'] = {}
     stats['remaining'] = {}
     stats['ports'] = {}
+    stats['expiremonth'] = {}
     cur.execute("select port, bits, sigalgo, issuer, notafter from certs")
     rows = cur.fetchall()
     for row in rows:
@@ -303,6 +304,7 @@ def mode_stats(args):
         notafter = str(row['notafter'])
         remaining = datetime.strptime(notafter, "%Y%m%d%H%M%SZ") - datetime.now()
         days = 0
+        expiremonth = notafter[:6]
         #print(row['bits'], row['sigalgo'])
         if remaining.days < 0:
             days = 'expired'
@@ -335,6 +337,10 @@ def mode_stats(args):
             stats['ports'][row['port']] += 1
         except:
             stats['ports'][row['port']] = 1
+        try:
+            stats['expiremonth'][expiremonth] += 1
+        except:
+            stats['expiremonth'][expiremonth] = 1
 
     # keysize stats
     print("===== Key Sizes")
@@ -365,6 +371,11 @@ def mode_stats(args):
     print()
 
     # expiration month (YYYY-MM)
+    print("===== Month of expiration")
+    s = sorted(stats['expiremonth'])
+    for k in s:
+        print("{:5}  {}".format(stats['expiremonth'][k], k))
+    print()
 
     # ports
     print("===== Ports")
