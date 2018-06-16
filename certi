@@ -78,6 +78,7 @@ def print_cert(cert):
             print("{0:>24}: {1}".format(n.decode(), e.__str__()))
         except OpenSSL.crypto.Error as e:
             pass
+    print()
 
 
 def cert_insert(target, port, cert):
@@ -172,6 +173,9 @@ def mode_scan(args):
         print("cert found on {}:{}:".format(host, port))
         print_cert(v)
         cert_insert(host, port, v)
+
+    print("{} certificates found.".format(len(results.items())))
+    print()
 
 
 def mode_file(args):
@@ -275,7 +279,9 @@ def mode_list(args):
             # highlight the term being searched for
             output = output.replace(args.target, tcolor.green+args.target+tcolor.reset)
         print(output)
-
+    print()
+    print("{} certificates listed.".format(len(rows)))
+    print()
     s.close()
 
 
@@ -341,6 +347,9 @@ def mode_stats(args):
             stats['expiremonth'][expiremonth] += 1
         except:
             stats['expiremonth'][expiremonth] = 1
+
+    print("{} certificates".format(len(rows)))
+    print()
 
     # keysize stats
     print("===== Key Sizes")
