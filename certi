@@ -293,7 +293,8 @@ def mode_stats(args):
     stats['sigs'] = {}
     stats['issuers'] = {}
     stats['remaining'] = {}
-    cur.execute("select bits, sigalgo, issuer, notafter from certs")
+    stats['ports'] = {}
+    cur.execute("select port, bits, sigalgo, issuer, notafter from certs")
     rows = cur.fetchall()
     for row in rows:
         bits = str(row['bits'])
@@ -330,6 +331,10 @@ def mode_stats(args):
             stats['remaining'][days] += 1
         except:
             stats['remaining'][days] = 1
+        try:
+            stats['ports'][row['port']] += 1
+        except:
+            stats['ports'][row['port']] = 1
 
     # keysize stats
     print("===== Key Sizes")
@@ -361,6 +366,12 @@ def mode_stats(args):
 
     # expiration month (YYYY-MM)
 
+    # ports
+    print("===== Ports")
+    s = sorted(stats['ports'], key=stats['ports'].__getitem__, reverse=True)
+    for k in s:
+        print("{:5}  {}".format(stats['ports'][k], k))
+    print()
     s.close()
 
 
