@@ -161,7 +161,10 @@ def mode_scan_worker(host, port, results):
 def mode_scan(args):
     #threads = []
     results = {}
-    list_targets = ipaddress.ip_network(args.target)
+    list_targets = []
+    for t in str(args.target).split(','):
+        print(t)
+        list_targets.extend(ipaddress.ip_network(t))
     list_ports = str(args.port).split(',')
     pool = ThreadPool(255)
     for item in list_targets:
