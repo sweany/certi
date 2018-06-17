@@ -164,7 +164,10 @@ def mode_scan(args):
     list_targets = []
     for t in str(args.target).split(','):
         print(t)
-        list_targets.extend(ipaddress.ip_network(t))
+        try:
+            list_targets.extend(ipaddress.ip_network(t))
+        except BaseException as e:
+            print("exception: {}".format(e))
     list_ports = str(args.port).split(',')
     pool = ThreadPool(255)
     for item in list_targets:
