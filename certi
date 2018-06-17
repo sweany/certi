@@ -217,6 +217,20 @@ def parse_file(file):
 
     return list_certs
 
+def mode_directory(args):
+    print("Directory {}".format(args.target))
+    count = 0
+    for item in os.listdir(args.target):
+        file = args.target + '/' + item
+        print(file)
+        if os.path.isfile(file):
+            print("reading {}".format(file))
+            certs = parse_file(file)
+            for cert in certs:
+                print_cert(cert)
+                count += 1
+                cert_insert(gethostname(), file, cert)
+    print("{} certificates found.".format(count))
 
 def mode_delete(args):
     try:
@@ -264,6 +278,7 @@ def mode_list(args):
                   row['port']))
             print()
             print_cert(row['cert'])
+            sys.exit(0)
         except lite.ProgrammingError as e:
             print("exception: {}".format(e))
     else:
@@ -424,6 +439,7 @@ def main():
     modes = {'host': mode_host,
              'scan': mode_scan,
              'file': mode_file,
+             'dir': mode_directory,
              'list': mode_list,
              'stats': mode_stats,
              'delete': mode_delete}
