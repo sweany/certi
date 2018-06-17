@@ -214,23 +214,34 @@ def parse_file(file):
                     cert += line
     except IOError as e:
         print("unable to open {}: {}".format(file, e))
+    except BaseException as e:
+        print("unknown error: {}".format(e))
 
     return list_certs
 
+
 def mode_directory(args):
     print("Directory {}".format(args.target))
+    count = parse_directory(args.target)
+    print("{} certificates found.".format(count))
+
+
+def parse_directory(dir):
     count = 0
-    for item in os.listdir(args.target):
-        file = args.target + '/' + item
+    for item in os.listdir(dir):
+        file = dir + '/' + item
         print(file)
-        if os.path.isfile(file):
+        if os.path.isdir(file):
+            count += parse_directory(file)
+        elif os.path.isfile(file):
             print("reading {}".format(file))
             certs = parse_file(file)
             for cert in certs:
                 print_cert(cert)
                 count += 1
                 cert_insert(gethostname(), file, cert)
-    print("{} certificates found.".format(count))
+    return count
+
 
 def mode_delete(args):
     try:
