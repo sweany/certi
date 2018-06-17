@@ -88,14 +88,14 @@ def print_cert(cert):
     print()
 
 
-def cert_insert(target, port, cert):
+def cert_insert(target, port, file, cert):
     if not cert:
         return
     try:
         s = lite.connect(dbfile, isolation_level=None)
         cur = s.cursor()
         try:
-            cur.execute("CREATE TABLE IF NOT EXISTS certs(id INTEGER PRIMARY KEY AUTOINCREMENT, datestamp INT, target VARCHAR, port INT, subject VARCHAR, issuer VARCHAR, sn VARCHAR, bits INT, sigalgo VARCHAR, notbefore VARCHAR, notafter VARCHAR, san TEXT, cert TEXT)")
+            cur.execute("CREATE TABLE IF NOT EXISTS certs(id INTEGER PRIMARY KEY AUTOINCREMENT, datestamp INT, target VARCHAR, port INT, file VARCHAR, subject VARCHAR, issuer VARCHAR, sn VARCHAR, bits INT, sigalgo VARCHAR, notbefore VARCHAR, notafter VARCHAR, san TEXT, cert TEXT)")
             #cur.execute("CREATE UNIQUE INDEX idx_cert ON certs(cert)") # forcing this to be unique means you can't see the same cert being used on multiple IPs. Find another way.
         except lite.OperationalError as e:
             #print(e)
@@ -108,10 +108,11 @@ def cert_insert(target, port, cert):
                 n = e.get_short_name().decode()
                 if n == "subjectAltName":
                     san = e.__str__()
-            cur.execute("INSERT INTO certs(datestamp, target, port, subject, issuer, sn, bits, sigalgo, notbefore, notafter, san, cert) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            cur.execute("INSERT INTO certs(datestamp, target, port, file, subject, issuer, sn, bits, sigalgo, notbefore, notafter, san, cert) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                         (datetime.now().strftime("%s"),
                         target,
                         port,
+                        file,
                         tostr_subject(x.get_subject().get_components()),
                         tostr_subject(x.get_issuer().get_components()),
                         str(x.get_serial_number()),
@@ -133,7 +134,7 @@ def cert_insert(target, port, cert):
 def mode_host(args):
     cert = getcert(args.target, args.port)
     print_cert(cert)
-    cert_insert(args.target, args.port, cert)
+    cert_insert(args.target, args.port, '', cert)
 
 
 def mode_scan_worker(host, port, results):
@@ -164,7 +165,7 @@ def mode_scan(args):
     list_ports = str(args.port).split(',')
     pool = ThreadPool(255)
     for item in list_targets:
-        if re.search('\.0|255$', str(item)):
+        if re.search('\.0$|255$', str(item)):
             print("skipping " + str(item))
             continue
         for p in list_ports:
@@ -183,7 +184,7 @@ def mode_scan(args):
         (host, port) = k.split(':')
         print("cert found on {}:{}:".format(host, port))
         print_cert(v)
-        cert_insert(host, port, v)
+        cert_insert(host, port, '', v)
 
     print("{} certificates found.".format(len(results.items())))
     print()
@@ -194,7 +195,7 @@ def mode_file(args):
     certs = parse_file(args.target)
     for cert in certs:
         print_cert(cert)
-        cert_insert(gethostname(), args.target, cert)
+        cert_insert(gethostname(), '', args.target, cert)
 
 
 def parse_file(file):
@@ -239,7 +240,7 @@ def parse_directory(dir):
             for cert in certs:
                 print_cert(cert)
                 count += 1
-                cert_insert(gethostname(), file, cert)
+                cert_insert(gethostname(), '', file, cert)
     return count
 
 
@@ -274,19 +275,20 @@ def mode_list(args):
 
     if args.target:
         try:
-            cur.execute('select * from certs where target like ? or subject like ? or issuer like ? or sn like ? or sigalgo like ? or bits like ? or notbefore like ? or notafter like ? or san like ?',
-                       ('%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%'))
+            cur.execute('select * from certs where target like ? or file like ? or subject like ? or issuer like ? or sn like ? or sigalgo like ? or bits like ? or notbefore like ? or notafter like ? or san like ?',
+                       ('%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%'))
         except lite.Error as e:
             print("failed to select from db: {}".format(e))
     elif args.id:
         # display details of individual cert
         try:
-            cur.execute("select datestamp, target, port, cert from certs where id = ?", (args.id,))
+            cur.execute("select datestamp, target, port, file, cert from certs where id = ?", (args.id,))
             row = cur.fetchone()
-            print("{}  {}:{}:".format(
+            print("{}  {}:{} ({}):".format(
                   datetime.fromtimestamp(int(row['datestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
                   row['target'],
-                  row['port']))
+                  row['port'],
+                  row['file']))
             print()
             print_cert(row['cert'])
             sys.exit(0)
@@ -312,11 +314,12 @@ def mode_list(args):
             else:
                 validity = 'EXPIRED'
 
-        output = "{:4} {}  {}:{}  {} bit  {}  {} => {}  {}\n\tSubject: {}\n\tIssuer: {}\n\tsubjectAltName: {}\n".format(
+        output = "{:4} {}  {}:{} ({})\n\t{} bit  {}  {} => {}  {}\n\tSubject: {}\n\tIssuer: {}\n\tsubjectAltName: {}\n".format(
             row['id'],
             datetime.fromtimestamp(int(row['datestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
             row['target'],
             row['port'],
+            row['file'],
             row['bits'],
             row['sigalgo'],
             row['notbefore'],
