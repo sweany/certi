@@ -56,7 +56,18 @@ def tostr_subject(subject):
     return s
 
 
-def print_cert(cert):
+def db_create():
+    try:
+        s = lite.connect(dbfile, isolation_level=None)
+        cur = s.cursor()
+        cur.execute("CREATE TABLE IF NOT EXISTS certs(id INTEGER PRIMARY KEY AUTOINCREMENT, datestamp INT, target VARCHAR, port INT, ptr VARCHAR, file VARCHAR, subject VARCHAR, issuer VARCHAR, sn VARCHAR, bits INT, sigalgo VARCHAR, notbefore VARCHAR, notafter VARCHAR, san TEXT, cert TEXT)")
+        #cur.execute("CREATE UNIQUE INDEX idx_cert ON certs(cert)") # forcing this to be unique means you can't see the same cert being used on multiple IPs. Find another way.
+    except lite.OperationalError as e:
+        #print(e)
+        pass
+
+
+def cert_print(cert):
     if not cert:
         return
     try:
@@ -87,19 +98,8 @@ def print_cert(cert):
             pass
     print()
 
-    
-def db_create():
-    try:
-        s = lite.connect(dbfile, isolation_level=None)
-        cur = s.cursor()
-        cur.execute("CREATE TABLE IF NOT EXISTS certs(id INTEGER PRIMARY KEY AUTOINCREMENT, datestamp INT, target VARCHAR, port INT, file VARCHAR, subject VARCHAR, issuer VARCHAR, sn VARCHAR, bits INT, sigalgo VARCHAR, notbefore VARCHAR, notafter VARCHAR, san TEXT, cert TEXT)")
-        #cur.execute("CREATE UNIQUE INDEX idx_cert ON certs(cert)") # forcing this to be unique means you can't see the same cert being used on multiple IPs. Find another way.
-    except lite.OperationalError as e:
-        #print(e)
-        pass
 
-
-def cert_insert(target, port, file, cert):
+def cert_insert(target, cert, port='', ptr='', file=''):
     if not cert:
         return
     try:
@@ -113,10 +113,11 @@ def cert_insert(target, port, file, cert):
                 n = e.get_short_name().decode()
                 if n == "subjectAltName":
                     san = e.__str__()
-            cur.execute("INSERT INTO certs(datestamp, target, port, file, subject, issuer, sn, bits, sigalgo, notbefore, notafter, san, cert) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            cur.execute("INSERT INTO certs(datestamp, target, port, ptr, file, subject, issuer, sn, bits, sigalgo, notbefore, notafter, san, cert) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                         (datetime.now().strftime("%s"),
                         target,
                         port,
+                        ptr,
                         file,
                         tostr_subject(x.get_subject().get_components()),
                         tostr_subject(x.get_issuer().get_components()),
@@ -138,24 +139,27 @@ def cert_insert(target, port, file, cert):
 
 def mode_host(args):
     cert = getcert(args.target, args.port)
-    print_cert(cert)
-    cert_insert(args.target, args.port, '', cert)
+    cert_print(cert)
+    cert_insert(args.target, cert, port=args.port)
 
 
 def mode_scan_worker(host, port, results):
+    answer = ''
     id = "{}:{}".format(host, port)
     #print("thread for {} started".format(id))
     setdefaulttimeout(10)
     if inet_aton(str(host)):
         try:
-            answer = gethostbyaddr(str(host))
+            (answer, alias, addr) = gethostbyaddr(str(host))
             print(answer)
         except:
             #print ("unable to resolve {}".format(host))
             pass
     try:
         cert = ssl.get_server_certificate((str(host), str(port)))
-        results[id] = cert
+        results[id] = {}
+        results[id]['ptr'] = answer
+        results[id]['cert'] = cert
     except TypeError as e:
         print(e)
     except:
@@ -192,8 +196,8 @@ def mode_scan(args):
     for k, v in results.items():
         (host, port) = k.split(':')
         print("cert found on {}:{}:".format(host, port))
-        print_cert(v)
-        cert_insert(host, port, '', v)
+        cert_print(v['cert'])
+        cert_insert(host, v['cert'], port=port, ptr=v['ptr'])
     print("{} certificates found in {} seconds.".format(len(results.items()), elapsed.seconds))
     print()
 
@@ -202,8 +206,8 @@ def mode_file(args):
     print("File {}:{}:".format(gethostname(), args.target))
     certs = parse_file(args.target)
     for cert in certs:
-        print_cert(cert)
-        cert_insert(gethostname(), '', args.target, cert)
+        cert_print(cert)
+        cert_insert(gethostname(), cert, file=args.target)
 
 
 def parse_file(file):
@@ -246,9 +250,9 @@ def parse_directory(dir):
             print("reading {}".format(file))
             certs = parse_file(file)
             for cert in certs:
-                print_cert(cert)
+                cert_print(cert)
                 count += 1
-                cert_insert(gethostname(), '', file, cert)
+                cert_insert(gethostname(), cert, file=file)
     return count
 
 
@@ -290,15 +294,16 @@ def mode_list(args):
     elif args.id:
         # display details of individual cert
         try:
-            cur.execute("select datestamp, target, port, file, cert from certs where id = ?", (args.id,))
+            cur.execute("select datestamp, target, port, ptr, file, cert from certs where id = ?", (args.id,))
             row = cur.fetchone()
-            print("{}  {}:{} ({}):".format(
+            print("{}  {}:{} ({}{}):".format(
                   datetime.fromtimestamp(int(row['datestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
                   row['target'],
                   row['port'],
+                  row['ptr'],
                   row['file']))
             print()
-            print_cert(row['cert'])
+            cert_print(row['cert'])
             sys.exit(0)
         except lite.ProgrammingError as e:
             print("exception: {}".format(e))
@@ -322,11 +327,12 @@ def mode_list(args):
             else:
                 validity = 'EXPIRED'
 
-        output = "{:4} {}  {}:{} ({})\n\t{} bit  {}  {} => {}  {}\n\tSubject: {}\n\tIssuer: {}\n\tsubjectAltName: {}\n".format(
+        output = "{:4} {}  {}:{} ({}{})\n\t{} bit  {}  {} => {}  {}\n\tSubject: {}\n\tIssuer: {}\n\tsubjectAltName: {}\n".format(
             row['id'],
             datetime.fromtimestamp(int(row['datestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
             row['target'],
             row['port'],
+            row['ptr'],
             row['file'],
             row['bits'],
             row['sigalgo'],
