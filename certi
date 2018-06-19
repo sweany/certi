@@ -159,7 +159,7 @@ def mode_scan_worker(host, port, results):
 
 
 def mode_scan(args):
-    #threads = []
+    time_start = datetime.now()
     results = {}
     list_targets = []
     for t in str(args.target).split(','):
@@ -169,30 +169,27 @@ def mode_scan(args):
         except BaseException as e:
             print("exception: {}".format(e))
     list_ports = str(args.port).split(',')
-    pool = ThreadPool(255)
+    pool = ThreadPool(512)
     for item in list_targets:
         if re.search('\.0$|255$', str(item)):
             print("skipping " + str(item))
             continue
         for p in list_ports:
             pool.apply_async(mode_scan_worker, args=(item, p, results))
-            #t = threading.Thread(target=mode_scan_worker, args=(item, p, results))
-            #threads.append(t)
-            #t.start()
 
     print("waiting for all threads to finish")
     pool.close()
     pool.join()
-    #for t in threads:
-    #    t.join()
+
+    time_stop = datetime.now()
+    elapsed = time_stop - time_start
 
     for k, v in results.items():
         (host, port) = k.split(':')
         print("cert found on {}:{}:".format(host, port))
         print_cert(v)
         cert_insert(host, port, '', v)
-
-    print("{} certificates found.".format(len(results.items())))
+    print("{} certificates found in {} seconds.".format(len(results.items()), elapsed.seconds))
     print()
 
 
