@@ -65,7 +65,7 @@ def print_cert(cert):
         print("unable to parse certificate object")
         return
     validity = 'valid'
-    if x.has_expired() == True:
+    if x.has_expired() is True:
         if sys.stdout.isatty():
             validity = tcolor.red + 'EXPIRED' + tcolor.reset
         else:
@@ -87,6 +87,7 @@ def print_cert(cert):
             pass
     print()
 
+    
 def db_create():
     try:
         s = lite.connect(dbfile, isolation_level=None)
@@ -96,6 +97,7 @@ def db_create():
     except lite.OperationalError as e:
         #print(e)
         pass
+
 
 def cert_insert(target, port, file, cert):
     if not cert:
@@ -314,7 +316,7 @@ def mode_list(args):
             print("unable to parse certificate object")
             continue
         validity = 'valid'
-        if x.has_expired() == True:
+        if x.has_expired() is True:
             if sys.stdout.isatty():
                 validity = tcolor.red + 'EXPIRED' + tcolor.reset
             else:
@@ -360,13 +362,28 @@ def mode_stats(args):
     stats['remaining'] = {}
     stats['ports'] = {}
     stats['expiremonth'] = {}
-    cur.execute("select port, bits, sigalgo, issuer, notafter from certs")
+    stats['words'] = {}
+    cur.execute("select subject, port, bits, sigalgo, issuer, notafter from certs")
     rows = cur.fetchall()
     for row in rows:
         bits = str(row['bits'])
         sigalgo = str(row['sigalgo'])
         issuer = str(row['issuer'])
         notafter = str(row['notafter'])
+        sections = row['subject'].split('/')
+        words = []
+        for s in sections:
+            s = re.sub('^[A-Z]+=', '', s)
+            w = s.split(' ')
+            words.extend(w)
+        for w in words:
+            if w == '':
+                continue
+            try:
+                stats['words'][w] += 1
+            except:
+                stats['words'][w] = 1
+
         remaining = datetime.strptime(notafter, "%Y%m%d%H%M%SZ") - datetime.now()
         days = 0
         expiremonth = notafter[:4] + '-' + notafter[4:6]
@@ -450,6 +467,13 @@ def mode_stats(args):
     s = sorted(stats['ports'], key=stats['ports'].__getitem__, reverse=True)
     for k in s:
         print("{:5}  {}".format(stats['ports'][k], k))
+    print()
+
+    # words
+    print("===== Subject words")
+    s = sorted(stats['words'], key=stats['words'].__getitem__, reverse=True)
+    for k in s:
+        print("{:5}  {}".format(stats['words'][k], k))
     print()
     s.close()
 
