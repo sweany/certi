@@ -37,7 +37,7 @@ class tcolor:
 
 def getcert(host, port):
     try:
-        setdefaulttimeout(5)
+        setdefaulttimeout(10)
         cert = ssl.get_server_certificate((host, port))
         return cert
     except ConnectionRefusedError as e:
@@ -87,6 +87,15 @@ def print_cert(cert):
             pass
     print()
 
+def db_create():
+    try:
+        s = lite.connect(dbfile, isolation_level=None)
+        cur = s.cursor()
+        cur.execute("CREATE TABLE IF NOT EXISTS certs(id INTEGER PRIMARY KEY AUTOINCREMENT, datestamp INT, target VARCHAR, port INT, file VARCHAR, subject VARCHAR, issuer VARCHAR, sn VARCHAR, bits INT, sigalgo VARCHAR, notbefore VARCHAR, notafter VARCHAR, san TEXT, cert TEXT)")
+        #cur.execute("CREATE UNIQUE INDEX idx_cert ON certs(cert)") # forcing this to be unique means you can't see the same cert being used on multiple IPs. Find another way.
+    except lite.OperationalError as e:
+        #print(e)
+        pass
 
 def cert_insert(target, port, file, cert):
     if not cert:
@@ -94,12 +103,6 @@ def cert_insert(target, port, file, cert):
     try:
         s = lite.connect(dbfile, isolation_level=None)
         cur = s.cursor()
-        try:
-            cur.execute("CREATE TABLE IF NOT EXISTS certs(id INTEGER PRIMARY KEY AUTOINCREMENT, datestamp INT, target VARCHAR, port INT, file VARCHAR, subject VARCHAR, issuer VARCHAR, sn VARCHAR, bits INT, sigalgo VARCHAR, notbefore VARCHAR, notafter VARCHAR, san TEXT, cert TEXT)")
-            #cur.execute("CREATE UNIQUE INDEX idx_cert ON certs(cert)") # forcing this to be unique means you can't see the same cert being used on multiple IPs. Find another way.
-        except lite.OperationalError as e:
-            #print(e)
-            pass
         try:
             x = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
             san = ''
@@ -140,7 +143,7 @@ def mode_host(args):
 def mode_scan_worker(host, port, results):
     id = "{}:{}".format(host, port)
     #print("thread for {} started".format(id))
-    setdefaulttimeout(5)
+    setdefaulttimeout(10)
     if inet_aton(str(host)):
         try:
             answer = gethostbyaddr(str(host))
@@ -159,7 +162,6 @@ def mode_scan_worker(host, port, results):
 
 
 def mode_scan(args):
-    time_start = datetime.now()
     results = {}
     list_targets = []
     for t in str(args.target).split(','):
@@ -169,7 +171,8 @@ def mode_scan(args):
         except BaseException as e:
             print("exception: {}".format(e))
     list_ports = str(args.port).split(',')
-    pool = ThreadPool(512)
+    pool = ThreadPool(256)
+    time_start = datetime.now()
     for item in list_targets:
         if re.search('\.0$|255$', str(item)):
             print("skipping " + str(item))
@@ -485,6 +488,7 @@ def main():
         sys.exit(1)
 
     try:
+        db_create()
         modes[args.mode](args)
     except:
         sys.exit()
