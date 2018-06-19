@@ -76,7 +76,7 @@ def cert_print(cert):
         print("unable to parse certificate object")
         return
     validity = 'valid'
-    if x.has_expired() is True:
+    if x.has_expired() == True:
         if sys.stdout.isatty():
             validity = tcolor.red + 'EXPIRED' + tcolor.reset
         else:
@@ -321,7 +321,7 @@ def mode_list(args):
             print("unable to parse certificate object")
             continue
         validity = 'valid'
-        if x.has_expired() is True:
+        if x.has_expired() == True:
             if sys.stdout.isatty():
                 validity = tcolor.red + 'EXPIRED' + tcolor.reset
             else:
