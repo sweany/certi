@@ -9,8 +9,8 @@ import re
 from socket import inet_aton, gethostbyaddr, gethostbyname, gethostname, setdefaulttimeout
 import sys
 import ssl
-#import threading
-from multiprocessing.pool import ThreadPool
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import as_completed
 import OpenSSL.crypto
 import sqlite3 as lite
 
@@ -177,18 +177,20 @@ def mode_scan(args):
         except BaseException as e:
             print("exception: {}".format(e))
     list_ports = str(args.port).split(',')
-    pool = ThreadPool(256)
+    target_count = len(list_targets) * len(list_ports)
+    executor = ThreadPoolExecutor(max_workers=256)
     time_start = datetime.now()
     for item in list_targets:
-        if re.search('\.0$|255$', str(item)):
-            print("skipping " + str(item))
-            continue
         for p in list_ports:
-            pool.apply_async(mode_scan_worker, args=(item, p, results))
+            executor.submit(mode_scan_worker, item, p, results)
 
     print("waiting for all threads to finish")
-    pool.close()
-    pool.join()
+    executor.shutdown(wait=True)
+    try:
+        for f in as_completed(executor):
+            print(f.result())
+    except BaseException as e:
+        print(e)
 
     time_stop = datetime.now()
     elapsed = time_stop - time_start
