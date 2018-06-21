@@ -375,7 +375,8 @@ def mode_stats(args):
     stats['ports'] = {}
     stats['expiremonth'] = {}
     stats['words'] = {}
-    cur.execute("select subject, port, bits, sigalgo, issuer, notafter from certs")
+    stats['slash24'] = {}
+    cur.execute("select target, subject, port, bits, sigalgo, issuer, notafter from certs")
     rows = cur.fetchall()
     for row in rows:
         bits = str(row['bits'])
@@ -396,6 +397,19 @@ def mode_stats(args):
             except:
                 stats['words'][w] = 1
 
+        try:
+            if re.match("\d+\.\d+\.\d+\.\d+", row['target']):
+                octets = row['target'].split('.')
+                octets[3] = '0'
+                slash24 = '.'.join(octets)
+                try:
+                    stats['slash24'][slash24] += 1
+                except:
+                    stats['slash24'][slash24] = 1
+        except BaseException as e:
+            print(e)
+            pass
+        
         remaining = datetime.strptime(notafter, "%Y%m%d%H%M%SZ") - datetime.now()
         days = 0
         expiremonth = notafter[:4] + '-' + notafter[4:6]
@@ -439,56 +453,24 @@ def mode_stats(args):
     print("{} certificates".format(len(rows)))
     print()
 
-    # keysize stats
-    print("===== Key Sizes")
-    s = sorted(stats['keysize'], key=stats['keysize'].__getitem__, reverse=True)
-    for k in s:
-        print("{:5}  {}".format(stats['keysize'][k], k))
-    print()
+    print_histogram("===== Key Sizes", stats['keysize'])
+    print_histogram("===== Signature Algorithms", stats['sigs'])
+    print_histogram("===== Issuers", stats['issuers'])
+    print_histogram("===== Days until expiration", stats['remaining'])
+    print_histogram("===== Month of expiration", stats['expiremonth'])
+    print_histogram("===== Ports", stats['ports'])
+    print_histogram("===== Subject words", stats['words'])
+    print_histogram("===== /24 networks", stats['slash24'])
 
-    # Signature algorithm stats
-    print("===== Signature Algorithms")
-    s = sorted(stats['sigs'], key=stats['sigs'].__getitem__, reverse=True)
-    for k in s:
-        print("{:5}  {}".format(stats['sigs'][k], k))
-    print()
-
-    # Issuer stats
-    print("===== Issuers")
-    s = sorted(stats['issuers'], key=stats['issuers'].__getitem__, reverse=True)
-    for k in s:
-        print("{:5}  {}".format(stats['issuers'][k], k))
-    print()
-
-    # time to expiration <30 days, 31-60, 61-90, 91+
-    print("===== Days until expiration")
-    s = sorted(stats['remaining'], key=stats['remaining'].__getitem__, reverse=True)
-    for k in s:
-        print("{:5}  {}".format(stats['remaining'][k], k))
-    print()
-
-    # expiration month (YYYY-MM)
-    print("===== Month of expiration")
-    s = sorted(stats['expiremonth'])
-    for k in s:
-        print("{:5}  {}".format(stats['expiremonth'][k], k))
-    print()
-
-    # ports
-    print("===== Ports")
-    s = sorted(stats['ports'], key=stats['ports'].__getitem__, reverse=True)
-    for k in s:
-        print("{:5}  {}".format(stats['ports'][k], k))
-    print()
-
-    # words
-    print("===== Subject words")
-    s = sorted(stats['words'], key=stats['words'].__getitem__, reverse=True)
-    for k in s:
-        print("{:5}  {}".format(stats['words'][k], k))
-    print()
     s.close()
 
+
+def print_histogram(title, d):
+    print(title)
+    s = sorted(d, key=d.__getitem__, reverse=True)
+    for k in s:
+        print("{:5}  {}".format(d[k], k))
+    print()
 
 def main():
     # program modes
