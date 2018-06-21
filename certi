@@ -376,6 +376,8 @@ def mode_stats(args):
     stats['expiremonth'] = {}
     stats['words'] = {}
     stats['slash24'] = {}
+    stats['slash16'] = {}
+    stats['slash8'] = {}
     cur.execute("select target, subject, port, bits, sigalgo, issuer, notafter from certs")
     rows = cur.fetchall()
     for row in rows:
@@ -402,10 +404,22 @@ def mode_stats(args):
                 octets = row['target'].split('.')
                 octets[3] = '0'
                 slash24 = '.'.join(octets)
+                octets[2] = '0'
+                slash16 = '.'.join(octets)
+                octets[1] = '0'
+                slash8 = '.'.join(octets)
                 try:
                     stats['slash24'][slash24] += 1
                 except:
                     stats['slash24'][slash24] = 1
+                try:
+                    stats['slash16'][slash16] += 1
+                except:
+                    stats['slash16'][slash16] = 1
+                try:
+                    stats['slash8'][slash8] += 1
+                except:
+                    stats['slash8'][slash8] = 1
         except BaseException as e:
             print(e)
             pass
@@ -461,6 +475,8 @@ def mode_stats(args):
     print_histogram("===== Ports", stats['ports'])
     print_histogram("===== Subject words", stats['words'])
     print_histogram("===== /24 networks", stats['slash24'])
+    print_histogram("===== /16 networks", stats['slash16'])
+    print_histogram("===== /8 networks", stats['slash8'])
 
     s.close()
 
