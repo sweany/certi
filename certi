@@ -151,7 +151,7 @@ def mode_scan_worker(host, port, results):
     if inet_aton(str(host)):
         try:
             (answer, alias, addr) = gethostbyaddr(str(host))
-            print(answer)
+            #print(answer)
         except:
             #print ("unable to resolve {}".format(host))
             pass
@@ -179,16 +179,20 @@ def mode_scan(args):
     list_ports = str(args.port).split(',')
     target_count = len(list_targets) * len(list_ports)
     executor = ThreadPoolExecutor(max_workers=256)
+    list_futures = []
     time_start = datetime.now()
     for item in list_targets:
         for p in list_ports:
-            executor.submit(mode_scan_worker, item, p, results)
+            list_futures.append(executor.submit(mode_scan_worker, item, p, results))
 
     print("waiting for all threads to finish")
-    executor.shutdown(wait=True)
+    #executor.shutdown(wait=True)
+    #executor.shutdown()
+    i = 0
     try:
-        for f in as_completed(executor):
-            print(f.result())
+        for f in as_completed(list_futures):
+            i += 1
+            sys.stdout.write(" {}/{} ({:.1f}%) completed\r".format(i, target_count, (i/target_count)*100))
     except BaseException as e:
         print(e)
 
