@@ -167,22 +167,14 @@ def mode_scan_worker(host, port, results):
     #print("thread for {}:{} done".format(host, port))
 
 
-def mode_scan(args):
+def mode_scan_driver_cf(targets, ports):
     results = {}
-    list_targets = []
-    for t in str(args.target).split(','):
-        print(t)
-        try:
-            list_targets.extend(ipaddress.ip_network(t))
-        except BaseException as e:
-            print("exception: {}".format(e))
-    list_ports = str(args.port).split(',')
-    target_count = len(list_targets) * len(list_ports)
-    executor = ThreadPoolExecutor(max_workers=256)
+    target_count = len(targets) * len(ports)
+    executor = ThreadPoolExecutor(max_workers=512)
     list_futures = []
-    time_start = datetime.now()
-    for item in list_targets:
-        for p in list_ports:
+
+    for item in targets:
+        for p in ports:
             list_futures.append(executor.submit(mode_scan_worker, item, p, results))
 
     print("waiting for all threads to finish")
@@ -195,6 +187,62 @@ def mode_scan(args):
             sys.stdout.write(" {}/{} ({:.1f}%) completed\r".format(i, target_count, (i/target_count)*100))
     except BaseException as e:
         print(e)
+
+    return results
+
+
+def mode_scan_driver_tp(targets, ports):
+    from multiprocessing.pool import ThreadPool
+    results = {}
+    pool = ThreadPool(256)
+
+    for item in targets:
+        for p in ports:
+            pool.apply_async(mode_scan_worker, args=(item, p, results))
+
+    print("waiting for all threads to finish")
+    pool.close()
+    pool.join()
+
+    return results
+
+
+def mode_scan_driver_t(targets, ports):
+    import threading
+    threads = []
+    results = {}
+
+    for item in targets:
+        for p in ports:
+            t = threading.Thread(target=mode_scan_worker, args=(item, p, results))
+            threads.append(t)
+            t.start()
+
+    print("waiting for all threads to finish")
+    for t in threads:
+        t.join()
+
+    return results
+
+
+def mode_scan(args):
+    list_targets = []
+    for t in str(args.target).split(','):
+        print(t)
+        try:
+            list_targets.extend(ipaddress.ip_network(t))
+        except BaseException as e:
+            print("exception: {}".format(e))
+    list_ports = str(args.port).split(',')
+    time_start = datetime.now()
+
+    # concurrent.futures.ThreadPoolExecutor variant
+    results = mode_scan_driver_cf(list_targets, list_ports)
+    # multiprocessing.pool.ThreadPool variant
+    #results = mode_scan_driver_tp(list_targets, list_ports)
+    # threading variant
+    #results = mode_scan_driver_t(list_targets, list_ports)
+    # asyncio variant?
 
     time_stop = datetime.now()
     elapsed = time_stop - time_start
@@ -435,7 +483,7 @@ def mode_stats(args):
         except BaseException as e:
             print(e)
             pass
-        
+
         remaining = datetime.strptime(notafter, "%Y%m%d%H%M%SZ") - datetime.now()
         days = 0
         expiremonth = notafter[:4] + '-' + notafter[4:6]
@@ -499,6 +547,7 @@ def print_histogram(title, d):
     for k in s:
         print("{:5}  {}".format(d[k], k))
     print()
+
 
 def main():
     # program modes
