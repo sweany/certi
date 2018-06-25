@@ -65,14 +65,14 @@ def db_create(dbfile):
 
 def cert_print(cert):
     if not cert:
-        return
+        raise TypeError("Valid certificate is needed as a parameter for cert_print()")
     try:
         x = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
-    except:
-        print("unable to parse certificate object")
-        return
+    except Exception as e:
+        raise ValueError("Unable to parse certificate object")
+
     validity = 'valid'
-    if x.has_expired() == True:
+    if x.has_expired():
         if sys.stdout.isatty():
             validity = tcolor.red + 'EXPIRED' + tcolor.reset
         else:
