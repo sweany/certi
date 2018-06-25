@@ -18,10 +18,6 @@ import sqlite3 as lite
 
 CA_FILE = '/etc/ssl/certs/ca-certificates.crt'
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
-dbfile = dir_path + '/certi.db'
-
-
 class tcolor:
     red = '\033[0;31m'
     bred = '\033[1;31m'
@@ -56,14 +52,14 @@ def tostr_subject(subject):
     return s
 
 
-def db_create():
+def db_create(dbfile):
     try:
         s = lite.connect(dbfile, isolation_level=None)
         cur = s.cursor()
         cur.execute("CREATE TABLE IF NOT EXISTS certs(id INTEGER PRIMARY KEY AUTOINCREMENT, datestamp INT, target VARCHAR, port INT, ptr VARCHAR, file VARCHAR, subject VARCHAR, issuer VARCHAR, sn VARCHAR, bits INT, sigalgo VARCHAR, notbefore VARCHAR, notafter VARCHAR, san TEXT, cert TEXT)")
         #cur.execute("CREATE UNIQUE INDEX idx_cert ON certs(cert)") # forcing this to be unique means you can't see the same cert being used on multiple IPs. Find another way.
     except lite.OperationalError as e:
-        #print(e)
+        print(e)
         pass
 
 
@@ -99,7 +95,7 @@ def cert_print(cert):
     print()
 
 
-def cert_insert(target, cert, port='', ptr='', file=''):
+def cert_insert(dbfile, target, cert, port='', ptr='', file=''):
     if not cert:
         return
     try:
@@ -140,7 +136,7 @@ def cert_insert(target, cert, port='', ptr='', file=''):
 def mode_host(args):
     cert = getcert(args.target, args.port)
     cert_print(cert)
-    cert_insert(args.target, cert, port=args.port)
+    cert_insert(args.db, args.target, cert, port=args.port)
 
 
 def mode_scan_worker(host, port, results):
@@ -167,15 +163,21 @@ def mode_scan_worker(host, port, results):
     #print("thread for {}:{} done".format(host, port))
 
 
-def mode_scan_driver_cf(targets, ports):
+def mode_scan_driver_cf(targets, ports, threadlimit):
     results = {}
-    target_count = len(targets) * len(ports)
-    executor = ThreadPoolExecutor(max_workers=512)
     list_futures = []
+    target_count = len(targets) * len(ports)
+    try:
+        executor = ThreadPoolExecutor(max_workers=int(threadlimit))
+    except BaseException as e:
+        print(e)
 
     for item in targets:
         for p in ports:
-            list_futures.append(executor.submit(mode_scan_worker, item, p, results))
+            try:
+                list_futures.append(executor.submit(mode_scan_worker, item, p, results))
+            except BaseException as e:
+                print(e)
 
     print("waiting for all threads to finish")
     #executor.shutdown(wait=True)
@@ -237,7 +239,7 @@ def mode_scan(args):
     time_start = datetime.now()
 
     # concurrent.futures.ThreadPoolExecutor variant
-    results = mode_scan_driver_cf(list_targets, list_ports)
+    results = mode_scan_driver_cf(list_targets, list_ports, args.threadlimit)
     # multiprocessing.pool.ThreadPool variant
     #results = mode_scan_driver_tp(list_targets, list_ports)
     # threading variant
@@ -251,7 +253,7 @@ def mode_scan(args):
         (host, port) = k.split(':')
         print("cert found on {}:{}:".format(host, port))
         cert_print(v['cert'])
-        cert_insert(host, v['cert'], port=port, ptr=v['ptr'])
+        cert_insert(args.db, host, v['cert'], port=port, ptr=v['ptr'])
     print("{} certificates found in {} seconds.".format(len(results.items()), elapsed.seconds))
     print()
 
@@ -261,7 +263,7 @@ def mode_file(args):
     certs = parse_file(args.target)
     for cert in certs:
         cert_print(cert)
-        cert_insert(gethostname(), cert, file=args.target)
+        cert_insert(args.db, gethostname(), cert, file=args.target)
 
 
 def parse_file(file):
@@ -289,34 +291,38 @@ def parse_file(file):
 
 def mode_directory(args):
     print("Directory {}".format(args.target))
-    count = parse_directory(args.target)
+    count = 0
+    list_files = parse_directory(args.target)
+    for f in list_files:
+        print("reading {}".format(f))
+        certs = parse_file(f)
+        for cert in certs:
+            cert_print(cert)
+            count += 1
+            cert_insert(args.db, gethostname(), cert, file=f)
     print("{} certificates found.".format(count))
 
 
 def parse_directory(dir):
     count = 0
+    list_files = []
     for item in os.listdir(dir):
         file = dir + '/' + item
         print(file)
         if os.path.isdir(file):
-            count += parse_directory(file)
+            list_files.extend(parse_directory(file))
         elif os.path.isfile(file):
-            print("reading {}".format(file))
-            certs = parse_file(file)
-            for cert in certs:
-                cert_print(cert)
-                count += 1
-                cert_insert(gethostname(), cert, file=file)
-    return count
+            list_files.append(file)
+    return list_files
 
 
 def mode_delete(args):
     try:
-        s = lite.connect(dbfile)
+        s = lite.connect(args.db)
         s.row_factory = lite.Row  # this allows calling columns by name instead of index
         cur = s.cursor()
     except lite.Error as e:
-        print("failed to connect to {}: {}".format(dbfile, e))
+        print("failed to connect to {}: {}".format(args.db, e))
         sys.exit(1)
 
     if args.id:
@@ -332,11 +338,11 @@ def mode_delete(args):
 
 def mode_list(args):
     try:
-        s = lite.connect(dbfile)
+        s = lite.connect(args.db)
         s.row_factory = lite.Row  # this allows calling columns by name instead of index
         cur = s.cursor()
     except lite.Error as e:
-        print("failed to connect to {}: {}".format(dbfile, e))
+        print("failed to connect to {}: {}".format(args.db, e))
         sys.exit(1)
 
     if args.target:
@@ -408,11 +414,11 @@ def mode_list(args):
 
 def mode_stats(args):
     try:
-        s = lite.connect(dbfile)
+        s = lite.connect(args.db)
         s.row_factory = lite.Row  # this allows calling columns by name instead of index
         cur = s.cursor()
     except lite.Error as e:
-        print("failed to connect to {}: {}".format(dbfile, e))
+        print("failed to connect to {}: {}".format(args.db, e))
         sys.exit(1)
 
     stats = {}
@@ -575,6 +581,7 @@ def main():
     parser.add_argument('-p', action='store', dest='port', default=443, help='port to test')
     parser.add_argument('-f', action='store', dest='db', default='certi.db', help='certificate db')
     parser.add_argument('-i', action='store', dest='id', default=0, help='certificate id')
+    parser.add_argument('-l', action='store', dest='threadlimit', default=512, help='thread limit')
 
     args = parser.parse_args()
 
@@ -582,10 +589,19 @@ def main():
         print("target not specified.")
         sys.exit(1)
 
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    if re.match("^/", args.db):
+        # user has specified a full path
+        pass
+    else:
+        args.db = dir_path + '/' + args.db
+
+    print("db path {}".format(args.db))
     try:
-        db_create()
+        db_create(args.db)
         modes[args.mode](args)
-    except:
+    except BaseException as e:
+        print(e)
         sys.exit()
 
 
