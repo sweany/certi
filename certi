@@ -65,6 +65,7 @@ def db_create(dbfile):
 
 def cert_print(cert):
 
+    # Raise exceptions instead of ambiguous return statement.
     if not cert:
         raise TypeError("Valid certificate is needed as a parameter for cert_print()")
     try:
@@ -73,6 +74,7 @@ def cert_print(cert):
         raise ValueError("Unable to parse certificate object")
 
     validity = 'valid'
+    # When returning a boolean, this way is 'more pythonic'
     if x.has_expired():
         if sys.stdout.isatty():
             validity = tcolor.red + 'EXPIRED' + tcolor.reset
