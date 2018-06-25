@@ -64,7 +64,6 @@ def db_create(dbfile):
 
 
 def cert_print(cert):
-
     # Raise exceptions instead of ambiguous return statement.
     if not cert:
         raise TypeError("Valid certificate is needed as a parameter for cert_print()")
