@@ -64,6 +64,7 @@ def db_create(dbfile):
 
 
 def cert_print(cert):
+
     if not cert:
         raise TypeError("Valid certificate is needed as a parameter for cert_print()")
     try:
