@@ -18,6 +18,7 @@ import sqlite3 as lite
 
 CA_FILE = '/etc/ssl/certs/ca-certificates.crt'
 
+
 class tcolor:
     red = '\033[0;31m'
     bred = '\033[1;31m'
@@ -75,7 +76,6 @@ def cert_print(cert):
     validity = 'valid'
     # When returning a boolean, this way is 'more pythonic'
     if x.has_expired():
-
         if sys.stdout.isatty():
             validity = tcolor.red + 'EXPIRED' + tcolor.reset
         else:
@@ -85,7 +85,7 @@ def cert_print(cert):
         n = e.get_short_name().decode()
         if (n == 'basicConstraints'):
             has_basicConstraints = True
-            
+
     print("                 Subject: {}".format(tostr_subject(x.get_subject().get_components())))
     print("                  Issuer: {}".format(tostr_subject(x.get_issuer().get_components())))
     print("           Serial Number: {}".format(x.get_serial_number()))
@@ -320,7 +320,6 @@ def mode_directory(args):
 
 
 def parse_directory(dir):
-    count = 0
     list_files = []
     for item in os.listdir(dir):
         file = dir + '/' + item
@@ -397,7 +396,7 @@ def mode_list(args):
             print("unable to parse certificate object")
             continue
         validity = 'valid'
-        if x.has_expired() == True:
+        if x.has_expired():
             if sys.stdout.isatty():
                 validity = tcolor.red + 'EXPIRED' + tcolor.reset
             else:
