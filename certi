@@ -73,7 +73,27 @@ def cert_print(cert):
     except Exception as e:
         raise ValueError("Unable to parse certificate object")
 
+    has_basicConstraints = False
     validity = 'valid'
+    warning_bits = ''
+    warning_sig = ''
+    if int(x.get_pubkey().bits()) < 2048:
+        if sys.stdout.isatty():
+            warning_bits = tcolor.red + 'WEAK' + tcolor.reset
+        else:
+            warning_bits = 'WEAK'
+
+    if x.get_signature_algorithm().decode() == 'md5WithRSAEncryption':
+        if sys.stdout.isatty():
+            warning_sig = tcolor.red + 'WEAK' + tcolor.reset
+        else:
+            warning_sig = 'WEAK'
+    if x.get_signature_algorithm().decode() == 'sha1WithRSAEncryption':
+        if sys.stdout.isatty():
+            warning_sig = tcolor.red + 'WEAK' + tcolor.reset
+        else:
+            warning_sig = 'WEAK'
+
     # When returning a boolean, this way is 'more pythonic'
     if x.has_expired():
         if sys.stdout.isatty():
@@ -89,8 +109,8 @@ def cert_print(cert):
     print("                 Subject: {}".format(tostr_subject(x.get_subject().get_components())))
     print("                  Issuer: {}".format(tostr_subject(x.get_issuer().get_components())))
     print("           Serial Number: {}".format(x.get_serial_number()))
-    print("                Key Size: {}".format(x.get_pubkey().bits()))
-    print("     Signature Algorithm: {}".format(x.get_signature_algorithm().decode()))
+    print("                Key Size: {}  {}".format(x.get_pubkey().bits(), warning_bits))
+    print("     Signature Algorithm: {}  {}".format(x.get_signature_algorithm().decode(), warning_sig))
     print("         Validity period: {}  {}  {}".format(x.get_notBefore().decode(), x.get_notAfter().decode(), validity))
     print("           SHA256 Digest: {}".format(x.digest('sha256').decode()))
     print("             SHA1 Digest: {}".format(x.digest('sha1').decode()))
