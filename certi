@@ -75,18 +75,32 @@ def cert_print(cert):
     validity = 'valid'
     # When returning a boolean, this way is 'more pythonic'
     if x.has_expired():
+
         if sys.stdout.isatty():
             validity = tcolor.red + 'EXPIRED' + tcolor.reset
         else:
             validity = 'EXPIRED'
-
+    for i in range(x.get_extension_count()-1):
+        e = x.get_extension(i)
+        n = e.get_short_name().decode()
+        if (n == 'basicConstraints'):
+            has_basicConstraints = True
+            
     print("                 Subject: {}".format(tostr_subject(x.get_subject().get_components())))
     print("                  Issuer: {}".format(tostr_subject(x.get_issuer().get_components())))
     print("           Serial Number: {}".format(x.get_serial_number()))
     print("                Key Size: {}".format(x.get_pubkey().bits()))
     print("     Signature Algorithm: {}".format(x.get_signature_algorithm().decode()))
     print("         Validity period: {}  {}  {}".format(x.get_notBefore().decode(), x.get_notAfter().decode(), validity))
+    print("           SHA256 Digest: {}".format(x.digest('sha256').decode()))
+    print("             SHA1 Digest: {}".format(x.digest('sha1').decode()))
     print()
+    if has_basicConstraints is False:
+        if sys.stdout.isatty():
+            print("\t" + tcolor.red + 'No basicConstraints extension' + tcolor.reset)
+        else:
+            print("\tNo basicConstraints extension")
+        print()
     for i in range(x.get_extension_count()-1):
         e = x.get_extension(i)
         n = e.get_short_name()
