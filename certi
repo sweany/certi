@@ -64,17 +64,18 @@ def db_create(dbfile):
 
 
 def cert_print(cert):
+    # Raise exceptions instead of ambiguous return statement.
     if not cert:
-        return
+        raise TypeError("Valid certificate is needed as a parameter for cert_print()")
     try:
         x = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
-    except:
-        print("unable to parse certificate object")
-        return
-    validity = 'valid'
-    has_basicConstraints = False
+    except Exception as e:
+        raise ValueError("Unable to parse certificate object")
 
-    if x.has_expired() == True:
+    validity = 'valid'
+    # When returning a boolean, this way is 'more pythonic'
+    if x.has_expired():
+
         if sys.stdout.isatty():
             validity = tcolor.red + 'EXPIRED' + tcolor.reset
         else:
