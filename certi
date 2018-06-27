@@ -84,6 +84,8 @@ def cert_print(cert):
     print("                Key Size: {}".format(x.get_pubkey().bits()))
     print("     Signature Algorithm: {}".format(x.get_signature_algorithm().decode()))
     print("         Validity period: {}  {}  {}".format(x.get_notBefore().decode(), x.get_notAfter().decode(), validity))
+    print("           SHA256 Digest: {}".format(x.digest('sha256').decode()))
+    print("             SHA1 Digest: {}".format(x.digest('sha1').decode()))
     print()
     for i in range(x.get_extension_count()-1):
         e = x.get_extension(i)
