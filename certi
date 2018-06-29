@@ -574,23 +574,25 @@ def mode_stats(args):
     print("{} certificates, {} unique".format(len(rows), distinct_count))
     print()
 
-    print_histogram("===== Key Sizes", stats['keysize'])
-    print_histogram("===== Signature Algorithms", stats['sigs'])
-    print_histogram("===== Issuers", stats['issuers'])
-    print_histogram("===== Days until expiration", stats['remaining'])
-    print_histogram("===== Month of expiration", stats['expiremonth'])
-    print_histogram("===== Ports", stats['ports'])
-    print_histogram("===== Subject words", stats['words'])
-    print_histogram("===== /24 networks", stats['slash24'])
-    print_histogram("===== /16 networks", stats['slash16'])
-    print_histogram("===== /8 networks", stats['slash8'])
+    print_histogram("Key Sizes", stats['keysize'])
+    print_histogram("Signature Algorithms", stats['sigs'])
+    print_histogram("Issuers", stats['issuers'])
+    print_histogram("Days until expiration", stats['remaining'])
+    print_histogram("Month of expiration", stats['expiremonth'])
+    print_histogram("Ports", stats['ports'])
+    print_histogram("Subject words", stats['words'])
+    print_histogram("/24 networks", stats['slash24'])
+    print_histogram("/16 networks", stats['slash16'])
+    print_histogram("/8 networks", stats['slash8'])
 
     #s.close()
 
 
 def print_histogram(title, d):
-    print(title)
     s = sorted(d, key=d.__getitem__, reverse=True)
+    unique = len(s)
+    print("{}  ({} unique)".format(title, unique))
+    print('====================')
     for k in s:
         print("{:5}  {}".format(d[k], k))
     print()
