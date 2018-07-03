@@ -473,6 +473,7 @@ def mode_stats(args):
     stats = {}
     stats['keysize'] = {}
     stats['sigs'] = {}
+    stats['subject'] = {}
     stats['issuers'] = {}
     stats['remaining'] = {}
     stats['ports'] = {}
@@ -504,6 +505,7 @@ def mode_stats(args):
     for row in rows:
         bits = str(row['bits'])
         sigalgo = str(row['sigalgo'])
+        subject = str(row['subject'])
         issuer = str(row['issuer'])
         notafter = str(row['notafter'])
         sections = row['subject'].split('/')
@@ -570,6 +572,10 @@ def mode_stats(args):
         except:
             stats['sigs'][sigalgo] = 1
         try:
+            stats['subject'][subject] += 1
+        except:
+            stats['subject'][subject] = 1
+        try:
             stats['issuers'][issuer] += 1
         except:
             stats['issuers'][issuer] = 1
@@ -596,6 +602,7 @@ def mode_stats(args):
     print_histogram("Key Sizes", stats['keysize'], args.limit)
     print_histogram("Signature Algorithms", stats['sigs'], args.limit)
     print_histogram("SHA256 digest", stats['digest'], args.limit)
+    print_histogram("Subjects", stats['subject'], args.limit)
     print_histogram("Issuers", stats['issuers'], args.limit)
     print_histogram("Days until expiration", stats['remaining'], args.limit)
     print_histogram("Month of expiration", stats['expiremonth'], args.limit)
