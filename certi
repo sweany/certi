@@ -57,7 +57,7 @@ def db_create(dbfile):
     try:
         s = lite.connect(dbfile, isolation_level=None)
         cur = s.cursor()
-        cur.execute("CREATE TABLE IF NOT EXISTS certs(id INTEGER PRIMARY KEY AUTOINCREMENT, datestamp INT, target VARCHAR, port INT, ptr VARCHAR, file VARCHAR, subject VARCHAR, issuer VARCHAR, sn VARCHAR, bits INT, sigalgo VARCHAR, notbefore VARCHAR, notafter VARCHAR, san TEXT, cert TEXT)")
+        cur.execute("CREATE TABLE IF NOT EXISTS certs(id INTEGER PRIMARY KEY AUTOINCREMENT, datestamp INT, target VARCHAR, port INT, ptr VARCHAR, file VARCHAR, subject VARCHAR, issuer VARCHAR, sn VARCHAR, bits INT, sigalgo VARCHAR, notbefore VARCHAR, notafter VARCHAR, san TEXT, digest_sha256 VARCHAR(95), cert TEXT)")
         #cur.execute("CREATE UNIQUE INDEX idx_cert ON certs(cert)") # forcing this to be unique means you can't see the same cert being used on multiple IPs. Find another way.
     except lite.OperationalError as e:
         print(e)
@@ -145,7 +145,7 @@ def cert_insert(dbfile, target, cert, port='', ptr='', file=''):
                 n = e.get_short_name().decode()
                 if n == "subjectAltName":
                     san = e.__str__()
-            cur.execute("INSERT INTO certs(datestamp, target, port, ptr, file, subject, issuer, sn, bits, sigalgo, notbefore, notafter, san, cert) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            cur.execute("INSERT INTO certs(datestamp, target, port, ptr, file, subject, issuer, sn, bits, sigalgo, notbefore, notafter, san, digest_sha256, cert) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                         (datetime.now().strftime("%s"),
                         target,
                         port,
@@ -159,6 +159,7 @@ def cert_insert(dbfile, target, cert, port='', ptr='', file=''):
                         x.get_notBefore().decode(),
                         x.get_notAfter().decode(),
                         san,
+                        x.digest('sha256').decode(),
                         cert))
         except lite.Error as e:
             print("could not insert data: {}".format(e))
@@ -480,6 +481,7 @@ def mode_stats(args):
     stats['slash24'] = {}
     stats['slash16'] = {}
     stats['slash8'] = {}
+    stats['digest'] = {}
 
     if args.target:
         try:
@@ -494,7 +496,7 @@ def mode_stats(args):
         try:
             cur.execute("select count(distinct cert) from certs")
             distinct_count = int(cur.fetchone()[0])
-            cur.execute("select target, subject, port, bits, sigalgo, issuer, notafter from certs")
+            cur.execute("select target, subject, port, bits, sigalgo, issuer, notafter, digest_sha256 from certs")
         except lite.Error as e:
             print("failed to select from db: {}".format(e))
 
@@ -505,6 +507,7 @@ def mode_stats(args):
         issuer = str(row['issuer'])
         notafter = str(row['notafter'])
         sections = row['subject'].split('/')
+        digest = row['digest_sha256']
         words = []
         for s in sections:
             s = re.sub('^[A-Z]+=', '', s)
@@ -582,12 +585,17 @@ def mode_stats(args):
             stats['expiremonth'][expiremonth] += 1
         except:
             stats['expiremonth'][expiremonth] = 1
+        try:
+            stats['digest'][digest] += 1
+        except:
+            stats['digest'][digest] = 1
 
     print("{} certificates, {} unique".format(len(rows), distinct_count))
     print()
 
     print_histogram("Key Sizes", stats['keysize'], args.limit)
     print_histogram("Signature Algorithms", stats['sigs'], args.limit)
+    print_histogram("SHA256 digest", stats['digest'], args.limit)
     print_histogram("Issuers", stats['issuers'], args.limit)
     print_histogram("Days until expiration", stats['remaining'], args.limit)
     print_histogram("Month of expiration", stats['expiremonth'], args.limit)
