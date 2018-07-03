@@ -33,6 +33,7 @@ class tcolor:
 
 
 def getcert(host, port):
+    """connect to a host:port to retrieve a certificate"""
     try:
         setdefaulttimeout(10)
         cert = ssl.get_server_certificate((host, port))
@@ -47,6 +48,7 @@ def getcert(host, port):
 
 
 def tostr_subject(subject):
+    """create a string representation of an x509 subject"""
     s = "/"
     for n, v in subject:
         s += "{}={}/".format(n.decode(), v.decode())
@@ -54,6 +56,7 @@ def tostr_subject(subject):
 
 
 def db_create(dbfile):
+    """initialize the db"""
     try:
         s = lite.connect(dbfile, isolation_level=None)
         cur = s.cursor()
@@ -65,6 +68,7 @@ def db_create(dbfile):
 
 
 def cert_print(cert):
+    """output certificate details to stdout"""
     # Raise exceptions instead of ambiguous return statement.
     if not cert:
         raise TypeError("Valid certificate is needed as a parameter for cert_print()")
@@ -132,6 +136,7 @@ def cert_print(cert):
 
 
 def cert_insert(dbfile, target, cert, port='', ptr='', file=''):
+    """insert an individual certificate into the db"""
     if not cert:
         return
     try:
@@ -171,12 +176,14 @@ def cert_insert(dbfile, target, cert, port='', ptr='', file=''):
 
 
 def mode_host(args):
+    """scan an individual host or ip"""
     cert = getcert(args.target, args.port)
     cert_print(cert)
     cert_insert(args.db, args.target, cert, port=args.port)
 
 
 def mode_scan_worker(host, port, results):
+    """individual scan workder for threading"""
     answer = ''
     id = "{}:{}".format(host, port)
     #print("thread for {} started".format(id))
@@ -201,6 +208,7 @@ def mode_scan_worker(host, port, results):
 
 
 def mode_scan_driver_cf(targets, threadlimit):
+    """concurrent.futures mode of multi-threaded scanning"""
     results = {}
     list_futures = []
     target_count = len(targets)
@@ -211,7 +219,7 @@ def mode_scan_driver_cf(targets, threadlimit):
 
     for ip, port in targets:
         try:
-            print("{}:{}".format(ip,port))
+            #print("{}:{}".format(ip,port))
             list_futures.append(executor.submit(mode_scan_worker, ip, port, results))
         except BaseException as e:
             print(e)
@@ -231,6 +239,7 @@ def mode_scan_driver_cf(targets, threadlimit):
 
 
 def mode_scan(args):
+    """network scanning mode"""
     # targets will be a list of tuples (ip, port)
     list_targets = []
     list_ports = str(args.port).split(',')
@@ -262,9 +271,8 @@ def mode_scan(args):
 
 
 def mode_rescan(args):
+    """rescan mode--scan all previously discovered targets again, replace values in db"""
     list_targets = []
-    list_ports = []
-    dict_ports = {}
     time_start = datetime.now()
 
     try:
@@ -277,7 +285,7 @@ def mode_rescan(args):
 
     rows = cur.fetchall()
     for row in rows:
-        list_targets.append( (row['target'], row['port']) )
+        list_targets.append((row['target'], row['port']))
 
     results = mode_scan_driver_cf(list_targets, args.limit)
 
@@ -294,6 +302,7 @@ def mode_rescan(args):
 
 
 def mode_file(args):
+    """individual file mode"""
     print("File {}:{}:".format(gethostname(), args.target))
     certs = parse_file(args.target)
     for cert in certs:
@@ -302,6 +311,7 @@ def mode_file(args):
 
 
 def parse_file(file):
+    """parse and individual file for PEM block headers"""
     list_certs = []
     try:
         with open(file, 'r') as source:
@@ -325,6 +335,7 @@ def parse_file(file):
 
 
 def mode_directory(args):
+    """directory parsing mode. find any file with PEM block headers"""
     print("Directory {}".format(args.target))
     count = 0
     list_files = parse_directory(args.target)
@@ -339,6 +350,7 @@ def mode_directory(args):
 
 
 def parse_directory(dir):
+    """recursive directory parsing"""
     list_files = []
     for item in os.listdir(dir):
         file = dir + '/' + item
@@ -351,6 +363,7 @@ def parse_directory(dir):
 
 
 def mode_delete(args):
+    """delete items from the db"""
     try:
         s = lite.connect(args.db)
         s.row_factory = lite.Row  # this allows calling columns by name instead of index
@@ -371,6 +384,7 @@ def mode_delete(args):
 
 
 def mode_list(args):
+    """list mode. output a list of certificates from the db, optionally based on a filter string"""
     try:
         s = lite.connect(args.db)
         s.row_factory = lite.Row  # this allows calling columns by name instead of index
@@ -459,6 +473,7 @@ def mode_list(args):
 
 
 def mode_stats(args):
+    """stats mode. read in the stored data from the db and output various histograms"""
     try:
         s = lite.connect(args.db)
         s.row_factory = lite.Row  # this allows calling columns by name instead of index
@@ -614,6 +629,7 @@ def mode_stats(args):
 
 
 def print_histogram(title, d, limit=10):
+    """print out a histogram from a dict, sorted by the most common key first"""
     limit = int(limit)
     s = sorted(d, key=d.__getitem__, reverse=True)
     unique = len(s)
@@ -678,5 +694,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
