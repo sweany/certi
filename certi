@@ -275,7 +275,7 @@ def mode_scan(args):
     time_start = datetime.now()
 
     # concurrent.futures.ThreadPoolExecutor variant
-    results = mode_scan_driver_cf(list_targets, list_ports, args.threadlimit)
+    results = mode_scan_driver_cf(list_targets, list_ports, args.limit)
     # multiprocessing.pool.ThreadPool variant
     #results = mode_scan_driver_tp(list_targets, list_ports)
     # threading variant
@@ -574,26 +574,27 @@ def mode_stats(args):
     print("{} certificates, {} unique".format(len(rows), distinct_count))
     print()
 
-    print_histogram("Key Sizes", stats['keysize'])
-    print_histogram("Signature Algorithms", stats['sigs'])
-    print_histogram("Issuers", stats['issuers'])
-    print_histogram("Days until expiration", stats['remaining'])
-    print_histogram("Month of expiration", stats['expiremonth'])
-    print_histogram("Ports", stats['ports'])
-    print_histogram("Subject words", stats['words'])
-    print_histogram("/24 networks", stats['slash24'])
-    print_histogram("/16 networks", stats['slash16'])
-    print_histogram("/8 networks", stats['slash8'])
+    print_histogram("Key Sizes", stats['keysize'], args.limit)
+    print_histogram("Signature Algorithms", stats['sigs'], args.limit)
+    print_histogram("Issuers", stats['issuers'], args.limit)
+    print_histogram("Days until expiration", stats['remaining'], args.limit)
+    print_histogram("Month of expiration", stats['expiremonth'], args.limit)
+    print_histogram("Ports", stats['ports'], args.limit)
+    print_histogram("Subject words", stats['words'], args.limit)
+    print_histogram("/24 networks", stats['slash24'], args.limit)
+    print_histogram("/16 networks", stats['slash16'], args.limit)
+    print_histogram("/8 networks", stats['slash8'], args.limit)
 
     #s.close()
 
 
-def print_histogram(title, d):
+def print_histogram(title, d, limit=10):
+    limit = int(limit)
     s = sorted(d, key=d.__getitem__, reverse=True)
     unique = len(s)
     print("{}  ({} unique)".format(title, unique))
     print('====================')
-    for k in s:
+    for k in s[0:limit]:
         print("{:5}  {}".format(d[k], k))
     print()
 
@@ -624,7 +625,8 @@ def main():
     parser.add_argument('-p', action='store', dest='port', default=443, help='port to test')
     parser.add_argument('-f', action='store', dest='db', default='certi.db', help='certificate db')
     parser.add_argument('-i', action='store', dest='id', default=0, help='certificate id')
-    parser.add_argument('-l', action='store', dest='threadlimit', default=512, help='thread limit')
+    # probably want to do this with a sub-parse so we can have different defaults for different operational modes
+    parser.add_argument('-l', action='store', dest='limit', default=512, type=int, help='limit')
 
     args = parser.parse_args()
 
