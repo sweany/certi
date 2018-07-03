@@ -390,18 +390,30 @@ def mode_list(args):
         # display details of individual cert
         try:
             cur.execute("select datestamp, target, port, ptr, file, cert from certs where id = ?", (args.id,))
-            row = cur.fetchone()
-            print("{}  {}:{} ({}{}):".format(
-                  datetime.fromtimestamp(int(row['datestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
-                  row['target'],
-                  row['port'],
-                  row['ptr'],
-                  row['file']))
-            print()
-            cert_print(row['cert'])
-            sys.exit(0)
         except lite.ProgrammingError as e:
             print("exception: {}".format(e))
+        row = cur.fetchone()
+        cert = row['cert']
+        print("{}  {}:{} ({}{}):".format(
+              datetime.fromtimestamp(int(row['datestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
+              row['target'],
+              row['port'],
+              row['ptr'],
+              row['file']))
+        print()
+        cert_print(cert)
+        # other targets with the same cert
+        try:
+            cur.execute("select target, port, ptr, file from certs where cert = ?", (cert,))
+        except lite.ProgrammingError as e:
+            print("exception: {}".format(e))
+        rows = cur.fetchall()
+        if len(rows):
+            print("{} targets contain the same certificate:".format(len(rows)))
+        for row in rows:
+            print("  {}:{} ({}{})".format(row['target'], row['port'], row['ptr'], row['file']))
+        sys.exit()
+
     else:
         try:
             cur.execute("select * from certs")
