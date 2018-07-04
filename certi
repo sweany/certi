@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""certi: a command line x509 certificate scanning and reporting tool."""
 
 import argparse
 from datetime import datetime
@@ -22,6 +23,7 @@ CA_FILE = '/etc/ssl/certs/ca-certificates.crt'
 
 
 class tcolor:
+    """tty colors for highlighting or alerting"""
     red = '\033[0;31m'
     bred = '\033[1;31m'
     green = '\033[0;32m'
