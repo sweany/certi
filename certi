@@ -590,8 +590,16 @@ def mode_stats(args):
             days = '31-60'
         elif remaining.days < 91:
             days = '61-90'
+        elif remaining.days < 121:
+            days = '90-120'
+        elif remaining.days < 151:
+            days = '121-150'
+        elif remaining.days < 181:
+            days = '151-180'
+        elif remaining.days < 366:
+            days = '181-365'
         else:
-            days = '90+'
+            days = '366+'
 
         try:
             stats['keysize'][bits] += 1
