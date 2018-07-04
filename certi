@@ -11,8 +11,8 @@ import sys
 import ssl
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
-import OpenSSL.crypto
 import sqlite3 as lite
+import OpenSSL.crypto
 
 # https://pyopenssl.org/en/stable/api/crypto.html
 
@@ -43,7 +43,7 @@ def getcert(host, port):
     except ssl.SSLError as e:
         print("SSL error: {}".format(e))
         print("Your openssl version ({}) may not support any common ciphers with the target.".format(ssl.OPENSSL_VERSION))
-    except:
+    except BaseException:
         pass
 
 
@@ -64,7 +64,6 @@ def db_create(dbfile):
         #cur.execute("CREATE UNIQUE INDEX idx_cert ON certs(cert)") # forcing this to be unique means you can't see the same cert being used on multiple IPs. Find another way.
     except lite.OperationalError as e:
         print(e)
-        pass
 
 
 def cert_print(cert):
@@ -107,7 +106,7 @@ def cert_print(cert):
     for i in range(x.get_extension_count()-1):
         e = x.get_extension(i)
         n = e.get_short_name().decode()
-        if (n == 'basicConstraints'):
+        if n == 'basicConstraints':
             has_basicConstraints = True
 
     print("                 Subject: {}".format(tostr_subject(x.get_subject().get_components())))
@@ -161,20 +160,20 @@ def cert_insert(dbfile, target, cert, port='', ptr='', file='', **options):
                 san = e.__str__()
         cur.execute("INSERT INTO certs(datestamp, target, port, ptr, file, subject, issuer, sn, bits, sigalgo, notbefore, notafter, san, digest_sha256, cert) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     (datetime.now().strftime("%s"),
-                    target,
-                    port,
-                    ptr,
-                    file,
-                    tostr_subject(x.get_subject().get_components()),
-                    tostr_subject(x.get_issuer().get_components()),
-                    str(x.get_serial_number()),
-                    x.get_pubkey().bits(),
-                    x.get_signature_algorithm().decode(),
-                    x.get_notBefore().decode(),
-                    x.get_notAfter().decode(),
-                    san,
-                    x.digest('sha256').decode(),
-                    cert))
+                     target,
+                     port,
+                     ptr,
+                     file,
+                     tostr_subject(x.get_subject().get_components()),
+                     tostr_subject(x.get_issuer().get_components()),
+                     str(x.get_serial_number()),
+                     x.get_pubkey().bits(),
+                     x.get_signature_algorithm().decode(),
+                     x.get_notBefore().decode(),
+                     x.get_notAfter().decode(),
+                     san,
+                     x.digest('sha256').decode(),
+                     cert))
     except lite.Error as e:
         print("could not insert data: {}".format(e))
 
@@ -198,7 +197,7 @@ def mode_scan_worker(host, port, results):
         try:
             (answer, alias, addr) = gethostbyaddr(str(host))
             #print(answer)
-        except:
+        except BaseException:
             #print ("unable to resolve {}".format(host))
             pass
     try:
@@ -208,7 +207,7 @@ def mode_scan_worker(host, port, results):
         results[id]['cert'] = cert
     except TypeError as e:
         print(e)
-    except:
+    except BaseException:
         pass
     #print("thread for {}:{} done".format(host, port))
 
@@ -355,11 +354,11 @@ def mode_directory(args):
     print("{} certificates found.".format(count))
 
 
-def parse_directory(dir):
+def parse_directory(dirname):
     """recursive directory parsing"""
     list_files = []
-    for item in os.listdir(dir):
-        file = dir + '/' + item
+    for item in os.listdir(dirname):
+        file = dirname + '/' + item
         print(file)
         if os.path.isdir(file):
             list_files.extend(parse_directory(file))
@@ -402,7 +401,7 @@ def mode_list(args):
     if args.target:
         try:
             cur.execute('select * from certs where target like ? or file like ? or subject like ? or issuer like ? or sn like ? or sigalgo like ? or bits like ? or notbefore like ? or notafter like ? or san like ? or digest_sha256 like ?',
-                       ('%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%'))
+                        ('%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%'))
         except lite.Error as e:
             print("failed to select from db: {}".format(e))
     elif args.id:
@@ -414,11 +413,11 @@ def mode_list(args):
         row = cur.fetchone()
         cert = row['cert']
         print("{}  {}:{} ({}{}):".format(
-              datetime.fromtimestamp(int(row['datestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
-              row['target'],
-              row['port'],
-              row['ptr'],
-              row['file']))
+            datetime.fromtimestamp(int(row['datestamp'])).strftime("%Y-%m-%d %H:%M:%S"),
+            row['target'],
+            row['port'],
+            row['ptr'],
+            row['file']))
         print()
         cert_print(cert)
         # other targets with the same cert
@@ -427,7 +426,7 @@ def mode_list(args):
         except lite.ProgrammingError as e:
             print("exception: {}".format(e))
         rows = cur.fetchall()
-        if len(rows):
+        if len(rows) > 1:
             print("{} targets contain the same certificate:".format(len(rows)))
         for row in rows:
             print("  {}:{} ({}{})".format(row['target'], row['port'], row['ptr'], row['file']))
@@ -443,8 +442,8 @@ def mode_list(args):
     for row in rows:
         try:
             x = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, row['cert'])
-        except:
-            print("unable to parse certificate object")
+        except BaseException as e:
+            print("unable to parse certificate object: {}".format(e))
             continue
         validity = 'valid'
         if x.has_expired():
@@ -506,10 +505,10 @@ def mode_stats(args):
     if args.target:
         try:
             cur.execute('select count(distinct cert) from certs where target like ? or file like ? or subject like ? or issuer like ? or sn like ? or sigalgo like ? or bits like ? or notbefore like ? or notafter like ? or san like ? or digest_sha256 like ?',
-                       ('%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%'))
+                        ('%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%'))
             distinct_count = int(cur.fetchone()[0])
             cur.execute('select * from certs where target like ? or file like ? or subject like ? or issuer like ? or sn like ? or sigalgo like ? or bits like ? or notbefore like ? or notafter like ? or san like ? or digest_sha256 like ?',
-                       ('%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%'))
+                        ('%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%'))
         except lite.Error as e:
             print("failed to select from db: {}".format(e))
     else:
@@ -539,7 +538,7 @@ def mode_stats(args):
                 continue
             try:
                 stats['words'][w] += 1
-            except:
+            except BaseException:
                 stats['words'][w] = 1
 
         try:
@@ -553,19 +552,18 @@ def mode_stats(args):
                 slash8 = '.'.join(octets)
                 try:
                     stats['slash24'][slash24] += 1
-                except:
+                except BaseException:
                     stats['slash24'][slash24] = 1
                 try:
                     stats['slash16'][slash16] += 1
-                except:
+                except BaseException:
                     stats['slash16'][slash16] = 1
                 try:
                     stats['slash8'][slash8] += 1
-                except:
+                except BaseException:
                     stats['slash8'][slash8] = 1
         except BaseException as e:
             print(e)
-            pass
 
         remaining = datetime.strptime(notafter, "%Y%m%d%H%M%SZ") - datetime.now()
         days = 0
@@ -584,35 +582,35 @@ def mode_stats(args):
 
         try:
             stats['keysize'][bits] += 1
-        except:
+        except BaseException:
             stats['keysize'][bits] = 1
         try:
             stats['sigs'][sigalgo] += 1
-        except:
+        except BaseException:
             stats['sigs'][sigalgo] = 1
         try:
             stats['subject'][subject] += 1
-        except:
+        except BaseException:
             stats['subject'][subject] = 1
         try:
             stats['issuers'][issuer] += 1
-        except:
+        except BaseException:
             stats['issuers'][issuer] = 1
         try:
             stats['remaining'][days] += 1
-        except:
+        except BaseException:
             stats['remaining'][days] = 1
         try:
             stats['ports'][row['port']] += 1
-        except:
+        except BaseException:
             stats['ports'][row['port']] = 1
         try:
             stats['expiremonth'][expiremonth] += 1
-        except:
+        except BaseException:
             stats['expiremonth'][expiremonth] = 1
         try:
             stats['digest'][digest] += 1
-        except:
+        except BaseException:
             stats['digest'][digest] = 1
 
     print("{} certificates, {} unique".format(len(rows), distinct_count))
@@ -647,6 +645,7 @@ def print_histogram(title, d, limit=10):
 
 
 def main():
+    """parse command line arguments, determine mode of operation"""
     # program modes
     modes = {'host': mode_host,
              'scan': mode_scan,
