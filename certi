@@ -3,10 +3,11 @@
 import argparse
 from datetime import datetime
 import ipaddress
-import json
+#import json
 import os
 import re
-from socket import inet_aton, gethostbyaddr, gethostbyname, gethostname, setdefaulttimeout
+from socket import inet_aton, gethostbyaddr, gethostname, setdefaulttimeout
+# gethostbyname
 import sys
 import ssl
 from concurrent.futures import ThreadPoolExecutor
@@ -134,7 +135,7 @@ def cert_print(cert):
     print()
 
 
-def cert_insert(dbfile, target, cert, port='', ptr='', file='', **options):
+def cert_insert(dbfile, target, cert, port='', ptr='', file='', replace=False):
     """insert an individual certificate into the db"""
     if not cert:
         return
@@ -145,11 +146,12 @@ def cert_insert(dbfile, target, cert, port='', ptr='', file='', **options):
         print("failed to connect to {}: {}".format(dbfile, e))
         sys.exit(1)
 
-    if options.get('replace'):
+    if replace:
         try:
-            cur.execute('DELETE FROM certs WHERE target = ? AND port = ? AND file = ?', target, port, file)
+            #print("attempting to delete {}:{}{}".format(target, port, file))
+            cur.execute('DELETE FROM certs WHERE target = ? AND port = ? AND file = ?', (target, port, file))
         except lite.Error as e:
-            pass
+            print("error deleting: {}".format(e))
     try:
         x = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
         san = ''
@@ -301,7 +303,7 @@ def mode_rescan(args):
         (host, port) = k.split(':')
         print("cert found on {}:{}:".format(host, port))
         cert_print(v['cert'])
-        cert_insert(dbfile=args.db, target=host, cert=v['cert'], port=port, ptr=v['ptr'], replace=True)
+        cert_insert(args.db, host, v['cert'], port=port, ptr=v['ptr'], replace=True)
     print("{} certificates found in {} seconds.".format(len(results.items()), elapsed.seconds))
     print()
 
@@ -542,7 +544,7 @@ def mode_stats(args):
                 stats['words'][w] = 1
 
         try:
-            if re.match("\d+\.\d+\.\d+\.\d+", row['target']):
+            if re.match(r"\d+\.\d+\.\d+\.\d+", row['target']):
                 octets = row['target'].split('.')
                 octets[3] = '0'
                 slash24 = '.'.join(octets)
@@ -689,6 +691,7 @@ def main():
         args.db = dir_path + '/' + args.db
 
     print("db path {}".format(args.db))
+    print()
     try:
         db_create(args.db)
         modes[args.mode](args)
