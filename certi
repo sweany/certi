@@ -135,42 +135,48 @@ def cert_print(cert):
     print()
 
 
-def cert_insert(dbfile, target, cert, port='', ptr='', file=''):
+def cert_insert(dbfile, target, cert, port='', ptr='', file='', **options):
     """insert an individual certificate into the db"""
     if not cert:
         return
     try:
         s = lite.connect(dbfile, isolation_level=None)
         cur = s.cursor()
-        try:
-            x = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
-            san = ''
-            for i in range(x.get_extension_count()-1):
-                e = x.get_extension(i)
-                n = e.get_short_name().decode()
-                if n == "subjectAltName":
-                    san = e.__str__()
-            cur.execute("INSERT INTO certs(datestamp, target, port, ptr, file, subject, issuer, sn, bits, sigalgo, notbefore, notafter, san, digest_sha256, cert) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                        (datetime.now().strftime("%s"),
-                        target,
-                        port,
-                        ptr,
-                        file,
-                        tostr_subject(x.get_subject().get_components()),
-                        tostr_subject(x.get_issuer().get_components()),
-                        str(x.get_serial_number()),
-                        x.get_pubkey().bits(),
-                        x.get_signature_algorithm().decode(),
-                        x.get_notBefore().decode(),
-                        x.get_notAfter().decode(),
-                        san,
-                        x.digest('sha256').decode(),
-                        cert))
-        except lite.Error as e:
-            print("could not insert data: {}".format(e))
     except lite.Error as e:
         print("failed to connect to {}: {}".format(dbfile, e))
         sys.exit(1)
+
+    if options.get('replace'):
+        try:
+            cur.execute('DELETE FROM certs WHERE target = ? AND port = ? AND file = ?', target, port, file)
+        except lite.Error as e:
+            pass
+    try:
+        x = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
+        san = ''
+        for i in range(x.get_extension_count()-1):
+            e = x.get_extension(i)
+            n = e.get_short_name().decode()
+            if n == "subjectAltName":
+                san = e.__str__()
+        cur.execute("INSERT INTO certs(datestamp, target, port, ptr, file, subject, issuer, sn, bits, sigalgo, notbefore, notafter, san, digest_sha256, cert) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (datetime.now().strftime("%s"),
+                    target,
+                    port,
+                    ptr,
+                    file,
+                    tostr_subject(x.get_subject().get_components()),
+                    tostr_subject(x.get_issuer().get_components()),
+                    str(x.get_serial_number()),
+                    x.get_pubkey().bits(),
+                    x.get_signature_algorithm().decode(),
+                    x.get_notBefore().decode(),
+                    x.get_notAfter().decode(),
+                    san,
+                    x.digest('sha256').decode(),
+                    cert))
+    except lite.Error as e:
+        print("could not insert data: {}".format(e))
 
     s.close()
 
@@ -296,7 +302,7 @@ def mode_rescan(args):
         (host, port) = k.split(':')
         print("cert found on {}:{}:".format(host, port))
         cert_print(v['cert'])
-        #cert_insert(args.db, host, v['cert'], port=port, ptr=v['ptr'])
+        cert_insert(dbfile=args.db, target=host, cert=v['cert'], port=port, ptr=v['ptr'], replace=True)
     print("{} certificates found in {} seconds.".format(len(results.items()), elapsed.seconds))
     print()
 
@@ -311,7 +317,7 @@ def mode_file(args):
 
 
 def parse_file(file):
-    """parse and individual file for PEM block headers"""
+    """parse an individual file for PEM block headers"""
     list_certs = []
     try:
         with open(file, 'r') as source:
