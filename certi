@@ -10,6 +10,7 @@ from socket import inet_aton, gethostbyaddr, gethostname, setdefaulttimeout
 # gethostbyname
 import sys
 import ssl
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 import sqlite3 as lite
@@ -502,18 +503,18 @@ def mode_stats(args):
 
     distinct_count = 0
     stats = {}
-    stats['keysize'] = {}
-    stats['sigs'] = {}
-    stats['subject'] = {}
-    stats['issuers'] = {}
-    stats['remaining'] = {}
-    stats['ports'] = {}
-    stats['expiremonth'] = {}
-    stats['words'] = {}
-    stats['slash24'] = {}
-    stats['slash16'] = {}
-    stats['slash8'] = {}
-    stats['digest'] = {}
+    stats['keysize'] = defaultdict(int)
+    stats['sigs'] = defaultdict(int)
+    stats['subject'] = defaultdict(int)
+    stats['issuer'] = defaultdict(int)
+    stats['remaining'] = defaultdict(int)
+    stats['ports'] = defaultdict(int)
+    stats['expiremonth'] = defaultdict(int)
+    stats['words'] = defaultdict(int)
+    stats['slash24'] = defaultdict(int)
+    stats['slash16'] = defaultdict(int)
+    stats['slash8'] = defaultdict(int)
+    stats['digest'] = defaultdict(int)
 
     if args.target:
         try:
@@ -549,10 +550,7 @@ def mode_stats(args):
         for w in words:
             if w == '':
                 continue
-            try:
-                stats['words'][w] += 1
-            except BaseException:
-                stats['words'][w] = 1
+            stats['words'][w] += 1
 
         try:
             if re.match(r"\d+\.\d+\.\d+\.\d+", row['target']):
@@ -563,25 +561,15 @@ def mode_stats(args):
                 slash16 = '.'.join(octets)
                 octets[1] = '0'
                 slash8 = '.'.join(octets)
-                try:
-                    stats['slash24'][slash24] += 1
-                except BaseException:
-                    stats['slash24'][slash24] = 1
-                try:
-                    stats['slash16'][slash16] += 1
-                except BaseException:
-                    stats['slash16'][slash16] = 1
-                try:
-                    stats['slash8'][slash8] += 1
-                except BaseException:
-                    stats['slash8'][slash8] = 1
+                stats['slash24'][slash24] += 1
+                stats['slash16'][slash16] += 1
+                stats['slash8'][slash8] += 1
         except BaseException as e:
             print(e)
 
         remaining = datetime.strptime(notafter, "%Y%m%d%H%M%SZ") - datetime.now()
         days = 0
         expiremonth = notafter[:4] + '-' + notafter[4:6]
-        #print(row['bits'], row['sigalgo'])
         if remaining.days < 0:
             days = 'expired'
         elif remaining.days < 31:
@@ -601,38 +589,14 @@ def mode_stats(args):
         else:
             days = '366+'
 
-        try:
-            stats['keysize'][bits] += 1
-        except BaseException:
-            stats['keysize'][bits] = 1
-        try:
-            stats['sigs'][sigalgo] += 1
-        except BaseException:
-            stats['sigs'][sigalgo] = 1
-        try:
-            stats['subject'][subject] += 1
-        except BaseException:
-            stats['subject'][subject] = 1
-        try:
-            stats['issuers'][issuer] += 1
-        except BaseException:
-            stats['issuers'][issuer] = 1
-        try:
-            stats['remaining'][days] += 1
-        except BaseException:
-            stats['remaining'][days] = 1
-        try:
-            stats['ports'][row['port']] += 1
-        except BaseException:
-            stats['ports'][row['port']] = 1
-        try:
-            stats['expiremonth'][expiremonth] += 1
-        except BaseException:
-            stats['expiremonth'][expiremonth] = 1
-        try:
-            stats['digest'][digest] += 1
-        except BaseException:
-            stats['digest'][digest] = 1
+        stats['keysize'][bits] += 1
+        stats['sigs'][sigalgo] += 1
+        stats['subject'][subject] += 1
+        stats['issuer'][issuer] += 1
+        stats['remaining'][days] += 1
+        stats['ports'][row['port']] += 1
+        stats['expiremonth'][expiremonth] += 1
+        stats['digest'][digest] += 1
 
     print("{} certificates, {} unique".format(len(rows), distinct_count))
     print()
@@ -641,7 +605,7 @@ def mode_stats(args):
     print_histogram("Signature Algorithms", stats['sigs'], args.limit)
     print_histogram("SHA256 digest", stats['digest'], args.limit)
     print_histogram("Subjects", stats['subject'], args.limit)
-    print_histogram("Issuers", stats['issuers'], args.limit)
+    print_histogram("Issuers", stats['issuer'], args.limit)
     print_histogram("Days until expiration", stats['remaining'], args.limit)
     print_histogram("Month of expiration", stats['expiremonth'], args.limit)
     print_histogram("Ports", stats['ports'], args.limit)
