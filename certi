@@ -189,10 +189,10 @@ def mode_host(args):
     cert_insert(args.db, args.target, cert, port=args.port)
 
 
-def mode_scan_worker(host, port, results):
+def mode_scan_worker(host, port):
     """individual scan workder for threading"""
     answer = ''
-    id = "{}:{}".format(host, port)
+    #id = "{}:{}".format(host, port)
     #print("thread for {} started".format(id))
     setdefaulttimeout(10)
     if inet_aton(str(host)):
@@ -204,9 +204,7 @@ def mode_scan_worker(host, port, results):
             pass
     try:
         cert = ssl.get_server_certificate((str(host), str(port)))
-        results[id] = {}
-        results[id]['ptr'] = answer
-        results[id]['cert'] = cert
+        return (host, port, answer, cert)
     except TypeError as e:
         print(e)
     except BaseException:
@@ -214,9 +212,8 @@ def mode_scan_worker(host, port, results):
     #print("thread for {}:{} done".format(host, port))
 
 
-def mode_scan_driver_cf(targets, threadlimit):
-    """concurrent.futures mode of multi-threaded scanning"""
-    results = {}
+def mode_scan_driver_cf_gen(targets, threadlimit):
+    """concurrent.futures mode of multi-threaded scanning, generator"""
     list_futures = []
     target_count = len(targets)
     try:
@@ -227,7 +224,7 @@ def mode_scan_driver_cf(targets, threadlimit):
     for ip, port in targets:
         try:
             #print("{}:{}".format(ip,port))
-            list_futures.append(executor.submit(mode_scan_worker, ip, port, results))
+            list_futures.append(executor.submit(mode_scan_worker, ip, port))
         except BaseException as e:
             print(e)
 
@@ -238,11 +235,14 @@ def mode_scan_driver_cf(targets, threadlimit):
     try:
         for f in as_completed(list_futures):
             i += 1
+            #print(f)
+            if f.result():
+                (host, port, ptr, cert) = f.result()
+                #print("{}:{} ({})\n{}\n".format(host, port, ptr, cert))
+                yield host, port, ptr, cert
             sys.stdout.write(" {}/{} ({:.1f}%) completed\r".format(i, target_count, (i/target_count)*100))
     except BaseException as e:
         print(e)
-
-    return results
 
 
 def mode_scan(args):
@@ -263,17 +263,17 @@ def mode_scan(args):
 
     time_start = datetime.now()
 
-    results = mode_scan_driver_cf(list_targets, args.limit)
+    count = 0
+    for host, port, ptr, cert in mode_scan_driver_cf_gen(list_targets, args.limit):
+        print("cert found on {}:{}:".format(host, port))
+        cert_print(cert)
+        cert_insert(args.db, host, cert, port=port, ptr=ptr)
+        count += 1
 
     time_stop = datetime.now()
     elapsed = time_stop - time_start
 
-    for k, v in results.items():
-        (host, port) = k.split(':')
-        print("cert found on {}:{}:".format(host, port))
-        cert_print(v['cert'])
-        cert_insert(args.db, host, v['cert'], port=port, ptr=v['ptr'])
-    print("{} certificates found in {} seconds.".format(len(results.items()), elapsed.seconds))
+    print("{} certificates found in {} seconds.".format(count, elapsed.seconds))
     print()
 
 
@@ -305,17 +305,17 @@ def mode_rescan(args):
     for row in rows:
         list_targets.append((row['target'], row['port']))
 
-    results = mode_scan_driver_cf(list_targets, args.limit)
+    count = 0
+    for host, port, ptr, cert in mode_scan_driver_cf_gen(list_targets, args.limit):
+        #print("cert found on {}:{}:".format(host, port))
+        #cert_print(cert)
+        cert_insert(args.db, host, cert, port=port, ptr=ptr, replace=True)
+        count += 1
 
     time_stop = datetime.now()
     elapsed = time_stop - time_start
 
-    for k, v in results.items():
-        (host, port) = k.split(':')
-        #print("cert found on {}:{}:".format(host, port))
-        #cert_print(v['cert'])
-        cert_insert(args.db, host, v['cert'], port=port, ptr=v['ptr'], replace=True)
-    print("{} certificates found in {} seconds.".format(len(results.items()), elapsed.seconds))
+    print("{} certificates found in {} seconds.".format(count, elapsed.seconds))
     print()
 
 
