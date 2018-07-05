@@ -107,7 +107,7 @@ def cert_print(cert):
             validity = tcolor.red + 'EXPIRED' + tcolor.reset
         else:
             validity = 'EXPIRED'
-    for i in range(x.get_extension_count()-1):
+    for i in range(x.get_extension_count() - 1):
         e = x.get_extension(i)
         n = e.get_short_name().decode()
         if n == 'basicConstraints':
@@ -128,7 +128,7 @@ def cert_print(cert):
         else:
             print("\tNo basicConstraints extension")
         print()
-    for i in range(x.get_extension_count()-1):
+    for i in range(x.get_extension_count() - 1):
         e = x.get_extension(i)
         n = e.get_short_name()
         try:
@@ -158,7 +158,7 @@ def cert_insert(dbfile, target, cert, port='', ptr='', file='', replace=False):
     try:
         x = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
         san = ''
-        for i in range(x.get_extension_count()-1):
+        for i in range(x.get_extension_count() - 1):
             e = x.get_extension(i)
             n = e.get_short_name().decode()
             if n == "subjectAltName":
@@ -243,7 +243,7 @@ def mode_scan_driver_cf_gen(targets, threadlimit):
                 (host, port, ptr, cert) = f.result()
                 #print("{}:{} ({})\n{}\n".format(host, port, ptr, cert))
                 yield host, port, ptr, cert
-            sys.stdout.write(" {}/{} ({:.1f}%) completed\r".format(i, target_count, (i/target_count)*100))
+            sys.stdout.write(" {}/{} ({:.1f}%) completed\r".format(i, target_count, (i / target_count) * 100))
     except BaseException as e:
         print(e)
 
@@ -295,7 +295,7 @@ def mode_rescan(args):
     if args.target:
         try:
             cur.execute('select id, target, port from certs where target like ? or file like ? or subject like ? or issuer like ? or sn like ? or sigalgo like ? or bits like ? or notbefore like ? or notafter like ? or san like ? or digest_sha256 like ?',
-                        ('%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%'))
+                        ('%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%'))
         except lite.Error as e:
             print("failed to select from db: {}".format(e))
     else:
@@ -417,7 +417,7 @@ def mode_list(args):
     if args.target:
         try:
             cur.execute('select * from certs where target like ? or file like ? or subject like ? or issuer like ? or sn like ? or sigalgo like ? or bits like ? or notbefore like ? or notafter like ? or san like ? or digest_sha256 like ?',
-                        ('%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%'))
+                        ('%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%'))
         except lite.Error as e:
             print("failed to select from db: {}".format(e))
     elif args.id:
@@ -485,7 +485,7 @@ def mode_list(args):
             row['san'])
         if sys.stdout.isatty():
             # highlight the term being searched for
-            output = output.replace(args.target, tcolor.green+args.target+tcolor.reset)
+            output = output.replace(args.target, tcolor.green + args.target + tcolor.reset)
         print(output)
     print()
     print("{} certificates listed.".format(len(rows)))
@@ -522,10 +522,10 @@ def mode_stats(args):
     if args.target:
         try:
             cur.execute('select count(distinct cert) from certs where target like ? or file like ? or subject like ? or issuer like ? or sn like ? or sigalgo like ? or bits like ? or notbefore like ? or notafter like ? or san like ? or digest_sha256 like ?',
-                        ('%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%'))
+                        ('%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%'))
             distinct_count = int(cur.fetchone()[0])
             cur.execute('select * from certs where target like ? or file like ? or subject like ? or issuer like ? or sn like ? or sigalgo like ? or bits like ? or notbefore like ? or notafter like ? or san like ? or digest_sha256 like ?',
-                        ('%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%', '%'+args.target+'%'))
+                        ('%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%', '%' + args.target + '%'))
         except lite.Error as e:
             print("failed to select from db: {}".format(e))
     else:
