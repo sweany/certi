@@ -512,6 +512,7 @@ def mode_stats(args):
     stats['remaining'] = defaultdict(int)
     stats['ports'] = defaultdict(int)
     stats['expiremonth'] = defaultdict(int)
+    stats['components'] = defaultdict(int)
     stats['words'] = defaultdict(int)
     stats['slash24'] = defaultdict(int)
     stats['slash16'] = defaultdict(int)
@@ -531,7 +532,7 @@ def mode_stats(args):
         try:
             cur.execute("select count(distinct cert) from certs")
             distinct_count = int(cur.fetchone()[0])
-            cur.execute("select target, subject, port, bits, sigalgo, issuer, notafter, digest_sha256 from certs")
+            cur.execute("select target, subject, port, bits, sigalgo, issuer, notafter, digest_sha256, cert from certs")
         except lite.Error as e:
             print("failed to select from db: {}".format(e))
 
@@ -544,6 +545,11 @@ def mode_stats(args):
         notafter = str(row['notafter'])
         sections = row['subject'].split('/')
         digest = row['digest_sha256']
+        x = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, row['cert'])
+        for n, v in x.get_subject().get_components():
+            c = "{}={}".format(n.decode(), v.decode())
+            stats['components'][c] += 1
+
         words = []
         for s in sections:
             s = re.sub('^[A-Z]+=', '', s)
@@ -611,6 +617,7 @@ def mode_stats(args):
     print_histogram("Days until expiration", stats['remaining'], args.limit)
     print_histogram("Month of expiration", stats['expiremonth'], args.limit)
     print_histogram("Ports", stats['ports'], args.limit)
+    print_histogram("Subject components", stats['components'], args.limit)
     print_histogram("Subject words", stats['words'], args.limit)
     print_histogram("/24 networks", stats['slash24'], args.limit)
     print_histogram("/16 networks", stats['slash16'], args.limit)
