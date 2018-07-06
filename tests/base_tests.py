@@ -56,14 +56,15 @@ class CertiTests(unittest.TestCase):
         cert = getcert('127.0.0.1', 443)
         self.assertEqual(mock_cert_pem, cert)
 
-    def test_print_cert(self):
+    def test_cert_print(self):
         cert = getcert('127.0.0.1', 443)
         out = StringIO()
         sys.stdout = out
         cert_print(cert)
-        sys.stdout = sys.__stdout__
-
         self.assertMultiLineEqual(mock_cert, out.getvalue())
+
+    def test_cert_print_no_valid_cert_provided(self):
+        self.assertRaises(ValueError, lambda: cert_print("cert"))
 
     def tearDown(self):
         pass
