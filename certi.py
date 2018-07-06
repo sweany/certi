@@ -723,7 +723,7 @@ def main():
                         help='target of operating mode; host or network or file etc.')
     # optional arguments
     parser.add_argument('-p', action='store', dest='port', default=443, help='port to test')
-    parser.add_argument('-f', action='store', dest='db', default='certi.py.db', help='certificate db')
+    parser.add_argument('-f', action='store', dest='db', default='certi.db', help='certificate db')
     parser.add_argument('-i', action='store', dest='id', default=0, help='certificate id')
     # probably want to do this with a sub-parse so we can have different defaults for different operational modes
     parser.add_argument('-l', action='store', dest='limit', default=512, type=int, help='limit')

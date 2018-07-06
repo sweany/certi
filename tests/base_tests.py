@@ -1,0 +1,39 @@
+# -*- coding: utf-8 -*
+import unittest
+from mock import MagicMock
+import ssl
+import certi
+
+mock_cert_pem = """
+-----BEGIN CERTIFICATE-----
+MIID+TCCAuGgAwIBAgIJAJzwtucXwFEsMA0GCSqGSIb3DQEBCwUAMIGSMQswCQYD
+VQQGEwJVUzELMAkGA1UECAwCQ0ExEDAOBgNVBAcMB05vd2hlcmUxETAPBgNVBAoM
+CE5vIFBsYWNlMRUwEwYDVQQLDAxEaXNvcmdhbml6ZWQxEjAQBgNVBAMMCWxvY2Fs
+aG9zdDEmMCQGCSqGSIb3DQEJARYXc29tZWd1eUBlYW0ICHhhbXBsZS5jb20wHhcN
+MTgwNzA2MTg1MTExWhcNNDUxMTIxMTg1MTExWjCBkjELMAkGA1UEBhMCVVMxCzAJ
+BgNVBAgMAkNBMRAwDgYDVQQHDAdOb3doZXJlMREwDwYDVQQKDAhObyBQbGFjZTEV
+MBMGA1UECwwMRGlzb3JnYW5pemVkMRIwEAYDVQQDDAlsb2NhbGhvc3QxJjAkBgkq
+hkiG9w0BCQEWF3NvbWVndXlAZWFtCAh4YW1wbGUuY29tMIIBIjANBgkqhkiG9w0B
+AQEFAAOCAQ8AMIIBCgKCAQEAtznMt9eybOSGzSi0WZrXBQCTIgKvRD5Rco82YIqH
+fe/9yffVjsHahq4k+aZg8JfmMVwQrFpapgy+D/zvMN4BYnDAGgqEFSuLgIGpWIxp
+zzZ6FX45bjNCrknBC7r+okwX41y+psQg0j1dD3ca3Y4ypvMF7zOiNsf0F5AuarlE
+6/VhXaTqd0X4jQ9j4tSKHVSVOI1fgDpgLTggaDdGPWkLo+0SCrtnWT36gDStJvZx
+X95BShc6qf2AIbzCcxGRuBN0tN53WVxHyRWseCV+Wj06vsUOkXFYzn7slzJWO7Vt
+s1kfUQh9JUMgUq5SUfM5BfIqVHOElBl8W7FwdA+iurOQBQIDAQABo1AwTjAdBgNV
+HQ4EFgQUroEZ6zvN6ogzFmWDGRBdUhSfU9QwHwYDVR0jBBgwFoAUroEZ6zvN6ogz
+FmWDGRBdUhSfU9QwDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAB/wE
+5ejPeEhp0EVaYMWF/p7t+FiSXL31VLaRCNIbNRQ6RLvVoj6sM8VnYx0U4ezj+ke/
+0sDaxBkszc4YUlNTwCWANyP140OAyYrm2PB3vQ0PztG18VNGqjUCZyb74k6K9R2N
+N9ovR6jB+t5n0Pcv3H+4fMEgHWRjq6SQp/eOWf2wVi8+krOeI5ITt/EDU6Rk2wDd
+sW/86Tfse3MWbrb4OiSzYmlSYUryU/Ofh+JM2RyfESnvdOTHvV6zfkJj4ViyZ1g7
+uSBqonnY+UtReCHt+kO0/cMmFCsZNr0wkE4cVu4VMwnsSscEMAYTDeW1ZFpQeeC3
+n1km6V13tqW+Znalgw==
+-----END CERTIFICATE-----
+"""
+
+
+class CertiTests(unittest.TestCase):
+    def test_get_cert(self):
+        ssl.get_server_certificate = MagicMock(return_value=mock_cert_pem)
+        cert = certi.getcert('127.0.0.1', 443)
+        self.assertEqual(mock_cert_pem, cert)
