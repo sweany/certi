@@ -2,18 +2,18 @@
 import unittest
 from mock import MagicMock
 import ssl
-import certi
+from certi import getcert, cert_print
+from io import StringIO
+import sys
 
 mock_cert_pem = """
 -----BEGIN CERTIFICATE-----
-MIID+TCCAuGgAwIBAgIJAJzwtucXwFEsMA0GCSqGSIb3DQEBCwUAMIGSMQswCQYD
-VQQGEwJVUzELMAkGA1UECAwCQ0ExEDAOBgNVBAcMB05vd2hlcmUxETAPBgNVBAoM
-CE5vIFBsYWNlMRUwEwYDVQQLDAxEaXNvcmdhbml6ZWQxEjAQBgNVBAMMCWxvY2Fs
-aG9zdDEmMCQGCSqGSIb3DQEJARYXc29tZWd1eUBlYW0ICHhhbXBsZS5jb20wHhcN
-MTgwNzA2MTg1MTExWhcNNDUxMTIxMTg1MTExWjCBkjELMAkGA1UEBhMCVVMxCzAJ
-BgNVBAgMAkNBMRAwDgYDVQQHDAdOb3doZXJlMREwDwYDVQQKDAhObyBQbGFjZTEV
-MBMGA1UECwwMRGlzb3JnYW5pemVkMRIwEAYDVQQDDAlsb2NhbGhvc3QxJjAkBgkq
-hkiG9w0BCQEWF3NvbWVndXlAZWFtCAh4YW1wbGUuY29tMIIBIjANBgkqhkiG9w0B
+MIIDmTCCAoGgAwIBAgIJAK2Hwgt1SjWFMA0GCSqGSIb3DQEBCwUAMGMxCzAJBgNV
+BAYTAlVTMQswCQYDVQQIDAJDQTERMA8GA1UEBwwITm8gUGxhY2UxETAPBgNVBAoM
+CE5vIFBsYWNlMQ0wCwYDVQQLDAROb25lMRIwEAYDVQQDDAlsb2NhbGhvc3QwHhcN
+MTgwNzA2MjAwMTQzWhcNNDUxMTIxMjAwMTQzWjBjMQswCQYDVQQGEwJVUzELMAkG
+A1UECAwCQ0ExETAPBgNVBAcMCE5vIFBsYWNlMREwDwYDVQQKDAhObyBQbGFjZTEN
+MAsGA1UECwwETm9uZTESMBAGA1UEAwwJbG9jYWxob3N0MIIBIjANBgkqhkiG9w0B
 AQEFAAOCAQ8AMIIBCgKCAQEAtznMt9eybOSGzSi0WZrXBQCTIgKvRD5Rco82YIqH
 fe/9yffVjsHahq4k+aZg8JfmMVwQrFpapgy+D/zvMN4BYnDAGgqEFSuLgIGpWIxp
 zzZ6FX45bjNCrknBC7r+okwX41y+psQg0j1dD3ca3Y4ypvMF7zOiNsf0F5AuarlE
@@ -21,19 +21,49 @@ zzZ6FX45bjNCrknBC7r+okwX41y+psQg0j1dD3ca3Y4ypvMF7zOiNsf0F5AuarlE
 X95BShc6qf2AIbzCcxGRuBN0tN53WVxHyRWseCV+Wj06vsUOkXFYzn7slzJWO7Vt
 s1kfUQh9JUMgUq5SUfM5BfIqVHOElBl8W7FwdA+iurOQBQIDAQABo1AwTjAdBgNV
 HQ4EFgQUroEZ6zvN6ogzFmWDGRBdUhSfU9QwHwYDVR0jBBgwFoAUroEZ6zvN6ogz
-FmWDGRBdUhSfU9QwDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAB/wE
-5ejPeEhp0EVaYMWF/p7t+FiSXL31VLaRCNIbNRQ6RLvVoj6sM8VnYx0U4ezj+ke/
-0sDaxBkszc4YUlNTwCWANyP140OAyYrm2PB3vQ0PztG18VNGqjUCZyb74k6K9R2N
-N9ovR6jB+t5n0Pcv3H+4fMEgHWRjq6SQp/eOWf2wVi8+krOeI5ITt/EDU6Rk2wDd
-sW/86Tfse3MWbrb4OiSzYmlSYUryU/Ofh+JM2RyfESnvdOTHvV6zfkJj4ViyZ1g7
-uSBqonnY+UtReCHt+kO0/cMmFCsZNr0wkE4cVu4VMwnsSscEMAYTDeW1ZFpQeeC3
-n1km6V13tqW+Znalgw==
+FmWDGRBdUhSfU9QwDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAnoDQ
+I33q3ya9mqfJp+dktgAZi9u1GP8UlDCCm6KyMjzVFtVa2TRkgaVSouBJdpdCPcnV
+rxFcyTpXQoNbiKBVh7693mnkyftRZCV+og/fFjWwJkJCHtlmDrRwmRF3mifYd9oP
+m8yCzi67PH1GhUtXgwGV5H/cTLYy+5ZIa+ukOGDgigg/k6l/074QSbsu+wBdKOxy
+kafQzaWRCuq7yDMTLHUBsbEwdKjYLOyoXHheCfPy6ZfaHa6MCip41CTrRWcTJdph
+ou0Y1Lq5cus+KaJx+RRpy51bZfnxqqatf/Wc+T7kmxZeCcM8Hvr6MhcAw+yGrxzk
+OxZ4O3kp+VhksuIg3g==
 -----END CERTIFICATE-----
 """
 
+mock_cert = """                 Subject: /C=US/ST=CA/L=No Place/O=No Place/OU=None/CN=localhost/
+                  Issuer: /C=US/ST=CA/L=No Place/O=No Place/OU=None/CN=localhost/
+           Serial Number: 12504176244885697925
+                Key Size: 2048  
+     Signature Algorithm: sha256WithRSAEncryption  
+         Validity period: 20180706200143Z  20451121200143Z  valid
+           SHA256 Digest: EF:73:DF:28:65:52:ED:6F:19:54:9A:20:25:55:D2:24:62:F9:BC:D7:B3:80:37:61:C5:50:87:3B:35:D3:33:7A
+             SHA1 Digest: CD:29:99:8F:13:F4:7D:F7:9A:AC:16:25:35:11:E9:C9:C5:B6:15:4C
+
+	No basicConstraints extension
+
+    subjectKeyIdentifier: AE:81:19:EB:3B:CD:EA:88:33:16:65:83:19:10:5D:52:14:9F:53:D4
+  authorityKeyIdentifier: keyid:AE:81:19:EB:3B:CD:EA:88:33:16:65:83:19:10:5D:52:14:9F:53:D4
+
+
+"""
 
 class CertiTests(unittest.TestCase):
-    def test_get_cert(self):
+    def setUp(self):
         ssl.get_server_certificate = MagicMock(return_value=mock_cert_pem)
-        cert = certi.getcert('127.0.0.1', 443)
+
+    def test_get_cert(self):
+        cert = getcert('127.0.0.1', 443)
         self.assertEqual(mock_cert_pem, cert)
+
+    def test_print_cert(self):
+        cert = getcert('127.0.0.1', 443)
+        out = StringIO()
+        sys.stdout = out
+        cert_print(cert)
+        sys.stdout = sys.__stdout__
+
+        self.assertMultiLineEqual(mock_cert, out.getvalue())
+
+    def tearDown(self):
+        pass
