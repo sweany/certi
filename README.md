@@ -2,7 +2,7 @@
 
 ## x509 certificate inventory tool
 
-A tool to catalog x509 certificates. I am so tired of typing `echo | openssl s_client -connect host:port | openssl x509 -text -noout`.
+A tool to catalog x509 certificates. I want a quick way to review the details of a certificate which is already deployed without typing so damn much. I am so tired of `echo | openssl s_client -connect host:port | openssl x509 -text -noout`. It would also be nice to know, at a glance, which certs in the environment need attention soon.
 
 Lofty goals for functionality:
 
@@ -11,12 +11,14 @@ Lofty goals for functionality:
 * sniffing mode
 * file mode
 * directory mode
-* machine-readable output--json perhaps
 * storing certificate details in sqlite db
 * listing and searching the stored certs for specific values
 * reporting stats on stored certs
 * HTML output
 * JSON output
+* logging of commands and cert details
+* Certificate path validation
+* basicConstraints checks, key size check, signature algorithm check
 
 
 ## Example
