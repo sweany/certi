@@ -1,10 +1,20 @@
 # -*- coding: utf-8 -*
+from importlib.util import spec_from_loader, module_from_spec
+from importlib.machinery import SourceFileLoader
 import unittest
 from mock import MagicMock
 import ssl
-from certi import getcert, cert_print
 from io import StringIO
 import sys
+from os import path
+
+current_dir = path.abspath(path.dirname(__file__))
+# Load certi module without needed to have .py attached to the
+# filename for automatic importability
+certi_spec = spec_from_loader('certi', SourceFileLoader('certi', path.join(current_dir, '..', 'certi')))
+certi = module_from_spec(certi_spec)
+certi_spec.loader.exec_module(certi)
+
 
 mock_cert_pem = """
 -----BEGIN CERTIFICATE-----
@@ -53,18 +63,18 @@ class CertiTests(unittest.TestCase):
         ssl.get_server_certificate = MagicMock(return_value=mock_cert_pem)
 
     def test_get_cert(self):
-        cert = getcert('127.0.0.1', 443)
+        cert = certi.getcert('127.0.0.1', 443)
         self.assertEqual(mock_cert_pem, cert)
 
     def test_cert_print(self):
-        cert = getcert('127.0.0.1', 443)
+        cert = certi.getcert('127.0.0.1', 443)
         out = StringIO()
         sys.stdout = out
-        cert_print(cert)
+        certi.cert_print(cert)
         self.assertMultiLineEqual(mock_cert, out.getvalue())
 
     def test_cert_print_no_valid_cert_provided(self):
-        self.assertRaises(ValueError, lambda: cert_print("cert"))
+        self.assertRaises(ValueError, lambda: certi.cert_print("cert"))
 
     def tearDown(self):
         pass
