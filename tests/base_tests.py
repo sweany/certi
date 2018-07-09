@@ -50,17 +50,18 @@ mock_cert = """                 Subject: /C=US/ST=CA/L=No Place/O=No Place/OU=No
            SHA256 Digest: EF:73:DF:28:65:52:ED:6F:19:54:9A:20:25:55:D2:24:62:F9:BC:D7:B3:80:37:61:C5:50:87:3B:35:D3:33:7A
              SHA1 Digest: CD:29:99:8F:13:F4:7D:F7:9A:AC:16:25:35:11:E9:C9:C5:B6:15:4C
 
-	No basicConstraints extension
-
     subjectKeyIdentifier: AE:81:19:EB:3B:CD:EA:88:33:16:65:83:19:10:5D:52:14:9F:53:D4
   authorityKeyIdentifier: keyid:AE:81:19:EB:3B:CD:EA:88:33:16:65:83:19:10:5D:52:14:9F:53:D4
 
+        basicConstraints: CA:TRUE
 
 """
+
 
 class CertiTests(unittest.TestCase):
     def setUp(self):
         ssl.get_server_certificate = MagicMock(return_value=mock_cert_pem)
+        self.maxDiff = None
 
     def test_get_cert(self):
         cert = certi.getcert('127.0.0.1', 443)
