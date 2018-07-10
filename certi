@@ -70,7 +70,7 @@ def db_create(dbfile):
         print(e)
 
 
-def cert_print(cert):
+def cert_print(cert, pem=False):
     """output certificate details to stdout"""
     # Raise exceptions instead of ambiguous return statement.
     if not cert:
@@ -136,6 +136,9 @@ def cert_print(cert):
         except OpenSSL.crypto.Error as e:
             pass
     print()
+    if pem:
+        print(cert)
+        print()
 
 
 def cert_insert(dbfile, target, cert, port='', ptr='', file='', replace=False):
@@ -493,7 +496,7 @@ def mode_list(args):
             row['ptr'],
             row['file']))
         print()
-        cert_print(cert)
+        cert_print(cert, pem=True)
         # other targets with the same cert
         try:
             cur.execute("select target, port, ptr, file from certs where cert = ?", (cert,))
