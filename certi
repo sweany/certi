@@ -505,8 +505,8 @@ def mode_list(args):
         rows = cur.fetchall()
         if len(rows) > 1:
             print("{} targets contain the same certificate:".format(len(rows)))
-        for row in rows:
-            print("  {}:{} ({}{})".format(row['target'], row['port'], row['ptr'], row['file']))
+            for row in rows:
+                print("  {}:{} ({}{})".format(row['target'], row['port'], row['ptr'], row['file']))
         sys.exit()
 
     else:
