@@ -107,7 +107,7 @@ def cert_print(cert, pem=False):
             validity = tcolor.red + 'EXPIRED' + tcolor.reset
         else:
             validity = 'EXPIRED'
-    for i in range(x.get_extension_count() - 1):
+    for i in range(x.get_extension_count()):
         e = x.get_extension(i)
         n = e.get_short_name().decode()
         if n == 'basicConstraints':
@@ -122,19 +122,20 @@ def cert_print(cert, pem=False):
     print("           SHA256 Digest: {}".format(x.digest('sha256').decode()))
     print("             SHA1 Digest: {}".format(x.digest('sha1').decode()))
     print()
+    print("{} extensions:".format(x.get_extension_count()))
     if has_basicConstraints is False:
         if sys.stdout.isatty():
             print("\t" + tcolor.red + 'No basicConstraints extension' + tcolor.reset)
         else:
             print("\tNo basicConstraints extension")
         print()
-    for i in range(x.get_extension_count() - 1):
+    for i in range(x.get_extension_count()):
         e = x.get_extension(i)
         n = e.get_short_name()
         try:
-            print("{0:>24}: {1}".format(n.decode(), e.__str__()))
+            print("{:2} {:>24}: {}".format(i, n.decode(), e.__str__()))
         except OpenSSL.crypto.Error as e:
-            pass
+            print(e)
     print()
     if pem:
         print(cert)
