@@ -1,2 +1,4 @@
 *.db
+*.cap
+*.pcap
 lint
